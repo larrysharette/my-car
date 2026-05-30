@@ -3,27 +3,12 @@
 import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { z } from "zod"
-
+import { signInSchema, signUpSchema } from "~/lib/validations/auth"
 import { actionError, actionSuccess } from "~/server/actions/utils"
 import { hashPassword, verifyPassword } from "~/server/auth/password"
 import { createSession, destroySession, getSessionCarId } from "~/server/auth/session"
 import db from "~/server/db"
 import { cars } from "~/server/db/schema"
-
-const signUpSchema = z.object({
-  username: z.string().min(3).max(256),
-  password: z.string().min(6),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  year: z.coerce.number().optional(),
-  name: z.string().optional(),
-})
-
-const signInSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
-})
 
 export async function signInAction(
   _prev: { error?: string } | null,

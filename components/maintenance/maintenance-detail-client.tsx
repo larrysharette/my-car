@@ -11,6 +11,7 @@ import { SystemBadge } from "~/components/theme/system-badge"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { DatePicker } from "~/components/ui/date-picker"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import {
@@ -55,11 +56,6 @@ function isVideoType(fileType: string) {
   return fileType.startsWith("video/")
 }
 
-function toLocalDatetime(value: Date | null | undefined) {
-  if (!value) return ""
-  return new Date(value).toISOString().slice(0, 16)
-}
-
 function useDebouncedSave(
   callback: (data: Record<string, unknown>) => Promise<void>,
   delay = 500
@@ -81,6 +77,13 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
   const [system, setSystem] = useState(log.system)
   const [service, setService] = useState(log.service)
   const [status, setStatus] = useState(log.status ?? "planned")
+  const [date, setDate] = useState(() => new Date(log.date))
+  const [plannedFor, setPlannedFor] = useState<Date | undefined>(() =>
+    log.plannedFor ? new Date(log.plannedFor) : undefined
+  )
+  const [completedAt, setCompletedAt] = useState<Date | undefined>(() =>
+    log.completedAt ? new Date(log.completedAt) : undefined
+  )
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
   const [partPending, startPartTransition] = useTransition()
   const [filePending, startFileTransition] = useTransition()
@@ -210,13 +213,14 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="datetime-local"
-                defaultValue={toLocalDatetime(log.date)}
-                onChange={(e) =>
-                  fieldChange("date", e.target.value ? new Date(e.target.value) : null)
-                }
+              <DatePicker
+                className="w-full"
+                selected={date}
+                onSelect={(d) => {
+                  if (!d) return
+                  setDate(d)
+                  fieldChange("date", d)
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -246,24 +250,24 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
             </div>
             <div className="space-y-2">
               <Label htmlFor="plannedFor">Planned for</Label>
-              <Input
-                id="plannedFor"
-                type="datetime-local"
-                defaultValue={toLocalDatetime(log.plannedFor)}
-                onChange={(e) =>
-                  fieldChange("plannedFor", e.target.value ? new Date(e.target.value) : null)
-                }
+              <DatePicker
+                className="w-full"
+                selected={plannedFor ?? null}
+                onSelect={(d) => {
+                  setPlannedFor(d)
+                  fieldChange("plannedFor", d ?? null)
+                }}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="completedAt">Completed at</Label>
-              <Input
-                id="completedAt"
-                type="datetime-local"
-                defaultValue={toLocalDatetime(log.completedAt)}
-                onChange={(e) =>
-                  fieldChange("completedAt", e.target.value ? new Date(e.target.value) : null)
-                }
+              <DatePicker
+                className="w-full"
+                selected={completedAt ?? null}
+                onSelect={(d) => {
+                  setCompletedAt(d)
+                  fieldChange("completedAt", d ?? null)
+                }}
               />
             </div>
             <div className="space-y-2">

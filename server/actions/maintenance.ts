@@ -3,8 +3,7 @@
 import { desc, eq, and, isNull, isNotNull, gte, lte } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { z } from "zod"
-
+import { createMaintenanceSchema } from "~/lib/validations/maintenance"
 import { isValidSystemServicePair } from "~/lib/data/systems-services"
 import { actionError, actionSuccess } from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
@@ -15,25 +14,13 @@ import {
   maintenanceParts,
 } from "~/server/db/schema"
 
-const createSchema = z.object({
-  date: z.coerce.date(),
-  system: z.string().min(1),
-  service: z.string().min(1),
-  status: z.enum(["planned", "in-progress", "completed"]).optional(),
-  odometer: z.coerce.number().optional(),
-  plannedFor: z.coerce.date().optional(),
-  completedAt: z.coerce.date().optional(),
-  description: z.string().optional(),
-  notes: z.string().optional(),
-})
-
 export async function createMaintenanceLog(
   formData: FormData,
   redirectToEdit = false
 ) {
   try {
     const carId = await requireCarId()
-    const parsed = createSchema.safeParse({
+    const parsed = createMaintenanceSchema.safeParse({
       date: formData.get("date"),
       system: formData.get("system"),
       service: formData.get("service"),

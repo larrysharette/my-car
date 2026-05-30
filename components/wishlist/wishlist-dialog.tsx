@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
+import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
 
 import { Button } from "~/components/ui/button"
@@ -11,8 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -22,6 +28,9 @@ import {
 } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
 import { getSystems } from "~/lib/data/systems-services"
+import { isFieldInvalid, parseOptionalNumber } from "~/lib/forms/field-state"
+import { zodFormValidator } from "~/lib/forms/zod-validator"
+import { wishlistFormSchema, wishlistToFormData } from "~/lib/validations/wishlist"
 import { createWishlistItem } from "~/server/actions/wishlist"
 
 export function WishlistDialog({
@@ -32,31 +41,40 @@ export function WishlistDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [pending, startTransition] = useTransition()
-  const [system, setSystem] = useState("")
   const systems = getSystems()
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    formData.set("system", system)
-    startTransition(async () => {
-      const result = await createWishlistItem(formData)
-      if (result.success) {
-        toast.success("Wishlist item added")
-        setSystem("")
-        e.currentTarget.reset()
-        onOpenChange(false)
-      } else {
-        toast.error(result.error)
-      }
-    })
-  }
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      description: "",
+      price: 0,
+      quantity: 1,
+      url: "",
+      system: "",
+    },
+    validators: {
+      onSubmit: zodFormValidator(wishlistFormSchema),
+    },
+    onSubmit: ({ value }) => {
+      const formData = wishlistToFormData(value)
+      startTransition(async () => {
+        const result = await createWishlistItem(formData)
+        if (result.success) {
+          toast.success("Wishlist item added")
+          form.reset()
+          onOpenChange(false)
+        } else {
+          toast.error(result.error)
+        }
+      })
+    },
+  })
 
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!o) setSystem("")
+        if (!o) form.reset()
         onOpenChange(o)
       }}
     >
@@ -64,49 +82,163 @@ export function WishlistDialog({
         <DialogHeader>
           <DialogTitle>Add wishlist item</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" required placeholder="Part or upgrade name" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea id="description" name="description" rows={2} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="price">Price ($)</Label>
-              <Input id="price" name="price" type="number" step="0.01" min={0} required />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            form.handleSubmit()
+          }}
+          className="space-y-4"
+        >
+          <FieldGroup>
+            <form.Field
+              name="name"
+              children={(field) => {
+                const invalid = isFieldInvalid(field)
+                return (
+                  <Field data-invalid={invalid}>
+                    <FieldLabel htmlFor={field.name}>Name</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      placeholder="Part or upgrade name"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      aria-invalid={invalid}
+                    />
+                    {invalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            />
+            <form.Field
+              name="description"
+              children={(field) => {
+                const invalid = isFieldInvalid(field)
+                return (
+                  <Field data-invalid={invalid}>
+                    <FieldLabel htmlFor={field.name}>Description</FieldLabel>
+                    <Textarea
+                      id={field.name}
+                      name={field.name}
+                      rows={2}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      aria-invalid={invalid}
+                    />
+                    {invalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <form.Field
+                name="price"
+                children={(field) => {
+                  const invalid = isFieldInvalid(field)
+                  return (
+                    <Field data-invalid={invalid}>
+                      <FieldLabel htmlFor={field.name}>Price ($)</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(Number(e.target.value))}
+                        aria-invalid={invalid}
+                      />
+                      {invalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              />
+              <form.Field
+                name="quantity"
+                children={(field) => {
+                  const invalid = isFieldInvalid(field)
+                  return (
+                    <Field data-invalid={invalid}>
+                      <FieldLabel htmlFor={field.name}>Quantity</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min={1}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(parseOptionalNumber(e.target.value) ?? 1)
+                        }
+                        aria-invalid={invalid}
+                      />
+                      {invalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity</Label>
-              <Input id="quantity" name="quantity" type="number" min={1} defaultValue={1} required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="url">URL</Label>
-            <Input id="url" name="url" type="url" placeholder="https://..." />
-          </div>
-          <div className="space-y-2">
-            <Label>System</Label>
-            <Select value={system} onValueChange={setSystem} required>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select system" />
-              </SelectTrigger>
-              <SelectContent>
-                {systems.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <form.Field
+              name="url"
+              children={(field) => {
+                const invalid = isFieldInvalid(field)
+                return (
+                  <Field data-invalid={invalid}>
+                    <FieldLabel htmlFor={field.name}>URL</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      type="url"
+                      placeholder="https://..."
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      aria-invalid={invalid}
+                    />
+                    {invalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            />
+            <form.Field
+              name="system"
+              children={(field) => {
+                const invalid = isFieldInvalid(field)
+                return (
+                  <Field data-invalid={invalid}>
+                    <FieldLabel htmlFor="wishlist-system">System</FieldLabel>
+                    <Select
+                      name={field.name}
+                      value={field.state.value}
+                      onValueChange={(value) =>
+                        field.handleChange(value as typeof field.state.value)
+                      }
+                    >
+                      <SelectTrigger id="wishlist-system" className="w-full" aria-invalid={invalid}>
+                        <SelectValue placeholder="Select system" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {systems.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {invalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            />
+          </FieldGroup>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending || !system}>
+            <Button type="submit" disabled={pending}>
               {pending ? "Adding..." : "Add item"}
             </Button>
           </DialogFooter>

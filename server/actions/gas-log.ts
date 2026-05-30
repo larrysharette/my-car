@@ -2,8 +2,7 @@
 
 import { desc, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { z } from "zod"
-
+import { gasLogSchema } from "~/lib/validations/gas-log"
 import {
   calculateMpg,
   getPreviousGasLogOdometer,
@@ -13,19 +12,6 @@ import { actionError, actionSuccess } from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
 import db from "~/server/db"
 import { gasLog } from "~/server/db/schema"
-
-const gasLogSchema = z.object({
-  date: z.coerce.date(),
-  trip: z.coerce.number().optional(),
-  odometer: z.coerce.number().optional(),
-  gallons: z.coerce.number().optional(),
-  pricePerGallon: z.coerce.number().optional(),
-  totalPrice: z.coerce.number().optional(),
-  notes: z.string().optional(),
-  fuelType: z.string().optional(),
-  gpsLatitude: z.coerce.number().optional(),
-  gpsLongitude: z.coerce.number().optional(),
-})
 
 export async function fetchPreviousGasLogOdometer() {
   try {

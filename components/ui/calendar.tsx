@@ -10,7 +10,15 @@ import {
 
 import { cn } from "~/lib/utils"
 import { Button, buttonVariants } from "~/components/ui/button"
-import { CaretLeftIcon, CaretRightIcon, CaretDownIcon } from "@phosphor-icons/react"
+import {
+  CaretLeftIcon,
+  CaretRightIcon,
+  CaretDownIcon,
+} from "@phosphor-icons/react"
+
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+}
 
 function Calendar({
   className,
@@ -22,9 +30,7 @@ function Calendar({
   formatters,
   components,
   ...props
-}: React.ComponentProps<typeof DayPicker> & {
-  buttonVariant?: React.ComponentProps<typeof Button>["variant"]
-}) {
+}: CalendarProps) {
   const defaultClassNames = getDefaultClassNames()
 
   return (

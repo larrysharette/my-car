@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // TanStack Form's Field component uses `children` as an explicit render-prop prop.
+  {
+    files: ["components/**/*.tsx"],
+    rules: {
+      "react/no-children-prop": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

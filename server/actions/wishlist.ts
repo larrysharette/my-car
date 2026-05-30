@@ -2,21 +2,11 @@
 
 import { desc, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { z } from "zod"
-
+import { wishlistSchema } from "~/lib/validations/wishlist"
 import { actionError, actionSuccess } from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
 import db from "~/server/db"
 import { wishlist } from "~/server/db/schema"
-
-const wishlistSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  price: z.coerce.number(),
-  quantity: z.coerce.number().min(1),
-  url: z.string().optional(),
-  system: z.string().min(1),
-})
 
 export async function createWishlistItem(formData: FormData) {
   try {

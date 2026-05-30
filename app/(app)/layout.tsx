@@ -1,6 +1,5 @@
 import { AppHeader } from "~/components/layout/app-header"
 import { AppSidebar } from "~/components/layout/app-sidebar"
-import { MobileNav } from "~/components/layout/mobile-nav"
 import { getCurrentCar } from "~/server/auth/get-car"
 
 export default async function AppLayout({
@@ -16,10 +15,9 @@ export default async function AppLayout({
       <AppSidebar carName={carName} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader carName={carName} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 md:px-6 md:py-6">
           {children}
         </main>
-        <MobileNav />
       </div>
     </div>
   )

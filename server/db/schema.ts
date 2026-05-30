@@ -14,6 +14,7 @@ import { createdAt, createTable, id, nanoid, updatedAt } from "./utils"
 
 export const cars = createTable("cars", {
   id,
+  username: varchar("username", { length: 256 }).notNull().unique(),
   name: varchar("name", { length: 256 }),
   brand: varchar("brand", { length: 256 }),
   model: varchar("model", { length: 256 }),
@@ -181,6 +182,7 @@ export const gasLog = createTable(
     fuelType: varchar("fuel_type", { length: 256 }),
     gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 6 }),
     gpsLongitude: decimal("gps_longitude", { precision: 10, scale: 6 }),
+    mpg: decimal("mpg", { precision: 10, scale: 2 }),
     createdAt,
   },
   (table) => [

@@ -1,0 +1,64 @@
+{
+  "Engine": {
+    "color": "racing-red",
+    "services": [
+      "Oil Change",
+      "Spark Plugs",
+      "Timing Belt",
+      "Air Filter",
+      "Coolant Flush",
+      "Transmission Fluid",
+      "Engine Diagnostic"
+    ]
+  },
+  "Brakes": {
+    "color": "racing-yellow",
+    "services": [
+      "Pad Replacement",
+      "Rotor Resurfacing",
+      "Brake Fluid Flush",
+      "Caliper Service",
+      "ABS Diagnostic"
+    ]
+  },
+  "Suspension": {
+    "color": "racing-blue",
+    "services": [
+      "Shock Replacement",
+      "Strut Replacement",
+      "Alignment",
+      "Bushings",
+      "Spring Replacement"
+    ]
+  },
+  "Electrical": {
+    "color": "racing-green",
+    "services": [
+      "Battery Replacement",
+      "Alternator",
+      "Starter",
+      "Wiring Repair",
+      "Sensor Replacement"
+    ]
+  },
+  "Body": {
+    "color": "racing-orange",
+    "services": [
+      "Paint Touch-up",
+      "Dent Repair",
+      "Rust Repair",
+      "Windshield Replacement",
+      "Detail"
+    ]
+  },
+  "General": {
+    "color": "steel",
+    "services": [
+      "Inspection",
+      "Tire Rotation",
+      "Tire Replacement",
+      "Wheel Balance",
+      "Annual Service"
+    ]
+  }
+}

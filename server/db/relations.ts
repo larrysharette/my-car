@@ -36,7 +36,7 @@ export const relations = defineRelations(schema, (r) => ({
       from: r.maintenanceLog.carId,
       to: r.cars.id,
     }),
-    parts: r.many.maintenanceParts(),
+    maintenanceParts: r.many.maintenanceParts(),
     files: r.many.maintenanceFiles(),
   },
   maintenanceParts: {

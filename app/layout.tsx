@@ -1,8 +1,16 @@
 import { Geist, Geist_Mono, Oxanium } from "next/font/google"
+import type { Viewport } from "next"
 
 import "./globals.css"
 import { ThemeProvider } from "~/components/theme-provider"
-import { cn } from "~/lib/utils";
+import { Toaster } from "~/components/ui/sonner"
+import { cn } from "~/lib/utils"
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+}
 
 const oxanium = Oxanium({subsets:['latin'],variable:'--font-sans'})
 
@@ -20,10 +28,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", oxanium.variable)}
+      className={cn("dark antialiased", fontMono.variable, "font-sans", oxanium.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -1,7 +1,18 @@
 import "dotenv/config"
 import { drizzle } from "drizzle-orm/node-postgres"
-import { relations } from "./relations"
+import { Pool } from "pg"
 
-const db = drizzle({ relations })
+import { relations } from "./relations"
+import * as schema from "./schema"
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
+
+const db = drizzle({
+  client: pool,
+  schema,
+  relations,
+})
 
 export default db

@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState, useTransition } from "react"
 import { ArrowSquareOut, LinkBreak, Link as LinkIcon } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
@@ -43,14 +44,25 @@ type SearchManual = {
 
 export function ServiceManualSettings({
   linkedManual,
+  carProfile,
+  initialMatches = [],
 }: {
   linkedManual: LinkedManual
+  carProfile?: {
+    brand: string | null
+    model: string | null
+    year: number | null
+  }
+  initialMatches?: SearchManual[]
 }) {
+  const router = useRouter()
   const [linked, setLinked] = useState(linkedManual)
-  const [make, setMake] = useState("")
-  const [model, setModel] = useState("")
-  const [year, setYear] = useState("")
-  const [results, setResults] = useState<SearchManual[]>([])
+  const [make, setMake] = useState(carProfile?.brand ?? "")
+  const [model, setModel] = useState(carProfile?.model ?? "")
+  const [year, setYear] = useState(
+    carProfile?.year != null ? String(carProfile.year) : ""
+  )
+  const [results, setResults] = useState<SearchManual[]>(initialMatches)
   const [pending, startTransition] = useTransition()
 
   function runSearch() {
@@ -78,6 +90,7 @@ export function ServiceManualSettings({
       const manual = results.find((item) => item.id === manualId) ?? linked
       if (manual) setLinked(manual)
       toast.success("Service manual linked")
+      router.refresh()
     })
   }
 
@@ -90,8 +103,19 @@ export function ServiceManualSettings({
       }
       setLinked(null)
       toast.success("Service manual unlinked")
+      router.refresh()
     })
   }
+
+  useEffect(() => {
+    setLinked(linkedManual)
+  }, [linkedManual])
+
+  useEffect(() => {
+    if (initialMatches.length > 0) {
+      setResults(initialMatches)
+    }
+  }, [initialMatches])
 
   return (
     <Card>
@@ -153,6 +177,11 @@ export function ServiceManualSettings({
 
         {results.length > 0 ? (
           <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              {initialMatches.length > 0 && results === initialMatches
+                ? "Manuals matching your car profile:"
+                : "Search results:"}
+            </p>
             {results.map((manual) => (
               <div key={manual.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
                 <div>

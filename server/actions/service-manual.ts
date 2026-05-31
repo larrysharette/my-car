@@ -8,6 +8,7 @@ import {
   findMatchingServiceManualsForCarRecord,
   searchServiceManualsQuery,
 } from "~/lib/service-manual/match"
+import { PENDING_MANUAL_FILE_URL } from "~/lib/service-manual/constants"
 import {
   finalizeServiceManualUploadSchema,
   linkServiceManualSchema,
@@ -29,7 +30,78 @@ import {
   serviceManuals,
 } from "~/server/db/schema"
 
-const PENDING_FILE_URL = "pending"
+async function indexAndStoreManualPages(
+  manualId: string,
+  fileUrl: string,
+  suggestedBookmarks: Array<{
+    title: string
+    pageNumber: number
+    category?: string
+  }>
+) {
+  let indexResult: Awaited<
+    ReturnType<(typeof import("~/lib/service-manual/index-pdf"))["indexPdfFromUrl"]>
+  >
+  try {
+    const { indexPdfFromUrl } = await import("~/lib/service-manual/index-pdf")
+    indexResult = await indexPdfFromUrl(fileUrl)
+  } catch (indexError) {
+    console.error("Service manual PDF indexing failed:", indexError)
+    indexResult = {
+      pages: [],
+      outlineBookmarks: [],
+      totalCharacters: 0,
+      indexStatus: "partial",
+    }
+  }
+
+  await db
+    .update(serviceManuals)
+    .set({ indexStatus: indexResult.indexStatus })
+    .where(eq(serviceManuals.id, manualId))
+
+  await db.delete(serviceManualPages).where(eq(serviceManualPages.serviceManualId, manualId))
+
+  if (indexResult.pages.length > 0) {
+    const { chunkPagesForInsert } = await import("~/lib/service-manual/index-pdf")
+    for (const batch of chunkPagesForInsert(indexResult.pages)) {
+      await db.insert(serviceManualPages).values(
+        batch.map((page) => ({
+          serviceManualId: manualId,
+          pageNumber: page.pageNumber,
+          textContent: page.textContent,
+        }))
+      )
+    }
+  }
+
+  await db
+    .delete(serviceManualSuggestedBookmarks)
+    .where(eq(serviceManualSuggestedBookmarks.serviceManualId, manualId))
+
+  const outlineBookmarks = indexResult.outlineBookmarks.map((bookmark, index) => ({
+    serviceManualId: manualId,
+    title: bookmark.title,
+    pageNumber: bookmark.pageNumber,
+    category: bookmark.category ?? null,
+    sortOrder: index,
+  }))
+
+  const uploadedBookmarks = suggestedBookmarks.map((bookmark, index) => ({
+    serviceManualId: manualId,
+    title: bookmark.title,
+    pageNumber: bookmark.pageNumber,
+    category: bookmark.category ?? null,
+    sortOrder: outlineBookmarks.length + index,
+  }))
+
+  const allBookmarks = [...outlineBookmarks, ...uploadedBookmarks]
+  if (allBookmarks.length > 0) {
+    await db.insert(serviceManualSuggestedBookmarks).values(allBookmarks)
+  }
+
+  return indexResult
+}
 
 export async function createServiceManualDraft(
   metadata: unknown
@@ -54,7 +126,7 @@ export async function createServiceManualDraft(
         purchaseUrl: data.purchaseUrl,
         uploadedByCarId: carId,
         title,
-        fileUrl: PENDING_FILE_URL,
+        fileUrl: PENDING_MANUAL_FILE_URL,
         fileName: "pending.pdf",
         indexStatus: "pending",
         textSource: "native",
@@ -92,59 +164,26 @@ export async function finalizeServiceManualUpload(input: unknown) {
 
     const suggestedBookmarks = parsed.data.suggestedBookmarks ?? []
 
-    const { indexPdfFromUrl } = await import("~/lib/service-manual/index-pdf")
-    const indexResult = await indexPdfFromUrl(parsed.data.fileUrl)
-
+    // Save the uploaded file first so linking works even if indexing is slow or fails.
     await db
       .update(serviceManuals)
       .set({
         fileUrl: parsed.data.fileUrl,
         fileName: parsed.data.fileName,
         fileSize: parsed.data.fileSize,
-        indexStatus: indexResult.indexStatus,
+        indexStatus: "pending",
         textSource: "native",
       })
       .where(eq(serviceManuals.id, manual.id))
 
     await db
-      .delete(serviceManualPages)
-      .where(eq(serviceManualPages.serviceManualId, manual.id))
+      .update(cars)
+      .set({ serviceManualId: manual.id })
+      .where(eq(cars.id, carId))
 
-    if (indexResult.pages.length > 0) {
-      await db.insert(serviceManualPages).values(
-        indexResult.pages.map((page) => ({
-          serviceManualId: manual.id,
-          pageNumber: page.pageNumber,
-          textContent: page.textContent,
-        }))
-      )
-    }
+    await indexAndStoreManualPages(manual.id, parsed.data.fileUrl, suggestedBookmarks)
 
-    await db
-      .delete(serviceManualSuggestedBookmarks)
-      .where(eq(serviceManualSuggestedBookmarks.serviceManualId, manual.id))
-
-    const outlineBookmarks = indexResult.outlineBookmarks.map((bookmark, index) => ({
-      serviceManualId: manual.id,
-      title: bookmark.title,
-      pageNumber: bookmark.pageNumber,
-      category: bookmark.category ?? null,
-      sortOrder: index,
-    }))
-
-    const uploadedBookmarks = suggestedBookmarks.map((bookmark, index) => ({
-      serviceManualId: manual.id,
-      title: bookmark.title,
-      pageNumber: bookmark.pageNumber,
-      category: bookmark.category ?? null,
-      sortOrder: outlineBookmarks.length + index,
-    }))
-
-    const allBookmarks = [...outlineBookmarks, ...uploadedBookmarks]
-    if (allBookmarks.length > 0) {
-      await db.insert(serviceManualSuggestedBookmarks).values(allBookmarks)
-    }
-
+    revalidatePath("/", "layout")
     revalidatePath("/service-manual")
     revalidatePath("/service-manual/upload")
     revalidatePath("/settings")
@@ -152,6 +191,53 @@ export async function finalizeServiceManualUpload(input: unknown) {
     return actionSuccess({ manualId: manual.id })
   } catch (e) {
     return actionErrorFromUnknown(e, "Failed to finalize manual upload")
+  }
+}
+
+export async function retryServiceManualUpload(input: unknown) {
+  try {
+    const carId = await requireCarId()
+    const parsed = finalizeServiceManualUploadSchema.safeParse(input)
+    if (!parsed.success) {
+      return actionError(parsed.error.issues[0]?.message ?? "Invalid input")
+    }
+
+    const manual = await db.query.serviceManuals.findFirst({
+      where: { id: parsed.data.manualId },
+    })
+
+    if (!manual || manual.uploadedByCarId !== carId) {
+      return actionError("Manual not found")
+    }
+
+    await db
+      .update(serviceManuals)
+      .set({
+        fileUrl: parsed.data.fileUrl,
+        fileName: parsed.data.fileName,
+        fileSize: parsed.data.fileSize,
+        indexStatus: "pending",
+      })
+      .where(eq(serviceManuals.id, manual.id))
+
+    await indexAndStoreManualPages(
+      manual.id,
+      parsed.data.fileUrl,
+      parsed.data.suggestedBookmarks ?? []
+    )
+
+    await db
+      .update(cars)
+      .set({ serviceManualId: manual.id })
+      .where(eq(cars.id, carId))
+
+    revalidatePath("/", "layout")
+    revalidatePath("/service-manual")
+    revalidatePath("/settings")
+
+    return actionSuccess({ manualId: manual.id })
+  } catch (e) {
+    return actionErrorFromUnknown(e, "Failed to retry manual upload")
   }
 }
 
@@ -190,7 +276,7 @@ export async function linkServiceManualToCar(input: unknown) {
     const manual = await db.query.serviceManuals.findFirst({
       where: { id: parsed.data.manualId },
     })
-    if (!manual || manual.fileUrl === PENDING_FILE_URL) {
+    if (!manual || manual.fileUrl === PENDING_MANUAL_FILE_URL) {
       return actionError("Manual not found")
     }
 
@@ -233,7 +319,7 @@ export async function getManualSearchIndex(manualId: string) {
     const manual = await db.query.serviceManuals.findFirst({
       where: { id: manualId },
     })
-    if (!manual || manual.fileUrl === PENDING_FILE_URL) {
+    if (!manual || manual.fileUrl === PENDING_MANUAL_FILE_URL) {
       return actionError("Manual not found")
     }
 
@@ -269,7 +355,7 @@ export async function getServiceManualForCar() {
       },
     })
 
-    if (!manual || manual.fileUrl === PENDING_FILE_URL) {
+    if (!manual || manual.fileUrl === PENDING_MANUAL_FILE_URL) {
       return actionSuccess(null)
     }
 

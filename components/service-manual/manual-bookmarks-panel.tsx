@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
+import { cn } from "~/lib/utils"
 import { addUserBookmark, removeUserBookmark } from "~/server/actions/service-manual"
 
 type Bookmark = {
@@ -22,6 +23,8 @@ export function ManualBookmarksPanel({
   currentPage,
   onJumpToPage,
   onUserBookmarksChange,
+  embedded = false,
+  className,
 }: {
   suggestedBookmarks: Bookmark[]
   userBookmarks: Bookmark[]
@@ -29,6 +32,8 @@ export function ManualBookmarksPanel({
   currentPage: number
   onJumpToPage: (page: number) => void
   onUserBookmarksChange: (bookmarks: Bookmark[]) => void
+  embedded?: boolean
+  className?: string
 }) {
   const [title, setTitle] = useState("")
   const [pending, startTransition] = useTransition()
@@ -81,7 +86,12 @@ export function ManualBookmarksPanel({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border bg-card p-3">
+    <div
+      className={cn(
+        embedded ? "space-y-4 p-3" : "space-y-4 rounded-lg border bg-card p-3",
+        className
+      )}
+    >
       <div className="space-y-2">
         <p className="text-sm font-medium">My bookmarks</p>
         <div className="flex gap-2">
@@ -89,22 +99,29 @@ export function ManualBookmarksPanel({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={`Page ${currentPage} label (optional)`}
+            className="h-11"
           />
-          <Button type="button" size="sm" disabled={pending} onClick={saveBookmark}>
+          <Button
+            type="button"
+            size="icon"
+            className="size-11 shrink-0"
+            disabled={pending}
+            onClick={saveBookmark}
+            aria-label="Save bookmark"
+          >
             <BookmarkSimple className="size-4" />
-            Save
           </Button>
         </div>
         {userBookmarks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No personal bookmarks yet.</p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="max-h-40 space-y-1 overflow-y-auto">
             {userBookmarks.map((bookmark) => (
               <li key={bookmark.id} className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => onJumpToPage(bookmark.pageNumber)}
-                  className="hover:bg-accent flex-1 rounded-md px-2 py-1.5 text-left text-sm"
+                  className="hover:bg-accent min-h-11 flex-1 touch-manipulation rounded-md px-2 py-1.5 text-left text-sm"
                 >
                   <span className="font-medium">{bookmark.title}</span>
                   <span className="block text-xs text-muted-foreground">
@@ -117,6 +134,7 @@ export function ManualBookmarksPanel({
                   size="icon-sm"
                   disabled={pending}
                   onClick={() => deleteBookmark(bookmark.id)}
+                  aria-label="Delete bookmark"
                 >
                   <Trash className="size-4" />
                 </Button>
@@ -131,29 +149,31 @@ export function ManualBookmarksPanel({
         {suggestedBookmarks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No suggested bookmarks for this manual.</p>
         ) : (
-          Object.entries(groupedSuggested).map(([category, bookmarks]) => (
-            <div key={category} className="space-y-1">
-              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {category}
-              </p>
-              <ul className="space-y-1">
-                {bookmarks.map((bookmark) => (
-                  <li key={bookmark.id}>
-                    <button
-                      type="button"
-                      onClick={() => onJumpToPage(bookmark.pageNumber)}
-                      className="hover:bg-accent w-full rounded-md px-2 py-1.5 text-left text-sm"
-                    >
-                      <span className="font-medium">{bookmark.title}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        Page {bookmark.pageNumber}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
+          <div className="max-h-[40dvh] space-y-3 overflow-y-auto md:max-h-56">
+            {Object.entries(groupedSuggested).map(([category, bookmarks]) => (
+              <div key={category} className="space-y-1">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  {category}
+                </p>
+                <ul className="space-y-1">
+                  {bookmarks.map((bookmark) => (
+                    <li key={bookmark.id}>
+                      <button
+                        type="button"
+                        onClick={() => onJumpToPage(bookmark.pageNumber)}
+                        className="hover:bg-accent min-h-11 w-full touch-manipulation rounded-md px-2 py-1.5 text-left text-sm"
+                      >
+                        <span className="font-medium">{bookmark.title}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Page {bookmark.pageNumber}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

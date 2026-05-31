@@ -1,5 +1,6 @@
-import { and, desc, gte, ilike, lte } from "drizzle-orm"
+import { and, desc, gte, ilike, lte, ne } from "drizzle-orm"
 
+import { PENDING_MANUAL_FILE_URL } from "~/lib/service-manual/constants"
 import db from "~/server/db"
 import { serviceManuals } from "~/server/db/schema"
 import { defaultManualTitle } from "~/lib/service-manual/format"
@@ -26,6 +27,7 @@ export async function findMatchingServiceManualsForCarRecord(car: {
         { model: { ilike: car.model.trim() } },
         { startYear: { lte: car.year } },
         { endYear: { gte: car.year } },
+        { fileUrl: { ne: PENDING_MANUAL_FILE_URL } },
       ],
     },
     orderBy: { createdAt: "desc" },
@@ -54,11 +56,16 @@ export async function searchServiceManualsQuery(query: {
     )
   }
 
-  if (conditions.length === 0) {
-    return db.query.serviceManuals.findMany({
-      orderBy: { createdAt: "desc" },
-      limit: 50,
-    })
+  const readyManuals = ne(serviceManuals.fileUrl, PENDING_MANUAL_FILE_URL)
+  conditions.push(readyManuals)
+
+  if (conditions.length === 1) {
+    return db
+      .select()
+      .from(serviceManuals)
+      .where(readyManuals)
+      .orderBy(desc(serviceManuals.createdAt))
+      .limit(50)
   }
 
   return db

@@ -3,6 +3,8 @@ import { PageHeader } from "~/components/layout/page-header"
 import { getStorageDriver } from "~/lib/storage/types"
 import { requireCar } from "~/server/auth/get-car"
 
+export const maxDuration = 300
+
 export default async function ServiceManualUploadPage() {
   await requireCar()
 

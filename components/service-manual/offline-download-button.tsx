@@ -24,6 +24,7 @@ export function OfflineDownloadButton({
   suggestedBookmarks,
   userBookmarks,
   onOfflineReady,
+  compact = false,
 }: {
   manual: {
     id: string
@@ -38,6 +39,7 @@ export function OfflineDownloadButton({
   suggestedBookmarks: OfflineManualRecord["suggestedBookmarks"]
   userBookmarks: OfflineManualRecord["userBookmarks"]
   onOfflineReady?: (blobUrl: string) => void
+  compact?: boolean
 }) {
   const [cached, setCached] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
@@ -124,6 +126,34 @@ export function OfflineDownloadButton({
   }
 
   if (cached) {
+    if (compact) {
+      return (
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-9 shrink-0"
+            disabled
+            aria-label="Saved offline"
+          >
+            <CloudCheck className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-9 shrink-0"
+            disabled={pending}
+            onClick={removeOfflineCopy}
+            aria-label="Remove offline copy"
+          >
+            <Trash className="size-4" />
+          </Button>
+        </div>
+      )
+    }
+
     return (
       <div className="flex items-center gap-2">
         <Button type="button" variant="secondary" disabled>
@@ -135,6 +165,22 @@ export function OfflineDownloadButton({
           Remove
         </Button>
       </div>
+    )
+  }
+
+  if (compact) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="size-9 shrink-0"
+        disabled={pending}
+        onClick={downloadForOffline}
+        aria-label={progress != null ? `Downloading ${progress}%` : "Save for offline"}
+      >
+        <CloudArrowDown className="size-4" />
+      </Button>
     )
   }
 

@@ -5,19 +5,26 @@ import { PageHeader } from "~/components/layout/page-header"
 import { carToFormValues } from "~/lib/validations/car"
 import { getCarSettings } from "~/server/actions/car"
 import { getCarSystems } from "~/server/actions/car-systems"
-import { getLinkedManualSettings } from "~/server/actions/service-manual"
+import {
+  findMatchingServiceManualsForCar,
+  getLinkedManualSettings,
+} from "~/server/actions/service-manual"
 
 export default async function SettingsPage() {
-  const [car, systems, manualSettings] = await Promise.all([
+  const [car, systems, manualSettings, matchingManuals] = await Promise.all([
     getCarSettings(),
     getCarSystems(),
     getLinkedManualSettings(),
+    findMatchingServiceManualsForCar(),
   ])
 
   const linkedManual =
     manualSettings.success && manualSettings.data.linked
       ? manualSettings.data.linked
       : null
+
+  const initialMatches =
+    matchingManuals.success && !linkedManual ? matchingManuals.data : []
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 sm:space-y-6">
@@ -36,7 +43,15 @@ export default async function SettingsPage() {
         engineDisplacement={car.engineDisplacement}
         initialValues={carToFormValues(car)}
       />
-      <ServiceManualSettings linkedManual={linkedManual} />
+      <ServiceManualSettings
+        linkedManual={linkedManual}
+        carProfile={{
+          brand: car.brand,
+          model: car.model,
+          year: car.year,
+        }}
+        initialMatches={initialMatches}
+      />
       <ServiceIntervalsForm systems={systems} />
     </div>
   )

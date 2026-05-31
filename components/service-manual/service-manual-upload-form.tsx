@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { Plus, Trash } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
@@ -45,6 +46,7 @@ export function ServiceManualUploadForm({
 }: {
   uploadDriver: UploadDriver
 }) {
+  const router = useRouter()
   const [make, setMake] = useState("")
   const [model, setModel] = useState("")
   const [startYear, setStartYear] = useState<number | undefined>()
@@ -116,12 +118,15 @@ export function ServiceManualUploadForm({
         })
 
         if (!finalized.success) {
-          toast.error(finalized.error)
+          toast.error(
+            `${finalized.error}. The PDF is in storage — try uploading again or contact support if this persists.`
+          )
           return
         }
 
-        toast.success("Service manual uploaded")
-        window.location.href = "/settings"
+        toast.success("Service manual uploaded and linked to your car")
+        router.push("/service-manual")
+        router.refresh()
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Upload failed")
       }
@@ -269,7 +274,7 @@ export function ServiceManualUploadForm({
 
         <div className="flex flex-wrap gap-2">
           <Button type="button" disabled={pending} onClick={submit}>
-            {pending ? "Uploading…" : "Upload manual"}
+            {pending ? "Uploading and indexing…" : "Upload manual"}
           </Button>
           <Button asChild variant="outline">
             <Link href="/settings">Cancel</Link>

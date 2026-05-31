@@ -12,6 +12,32 @@ export default async function ServiceManualPage() {
   const result = await getServiceManualForCar()
   const data = result.success ? result.data : null
 
+  if (data) {
+    return (
+      <ManualViewerClient
+        manual={{
+          id: data.manual.id,
+          title: data.manual.title,
+          make: data.manual.make,
+          model: data.manual.model,
+          startYear: data.manual.startYear,
+          endYear: data.manual.endYear,
+          fileUrl: data.manual.fileUrl,
+          fileName: data.manual.fileName,
+          fileSize: data.manual.fileSize,
+          purchaseUrl: data.manual.purchaseUrl,
+          indexStatus: data.manual.indexStatus,
+          suggestedBookmarks: data.manual.suggestedBookmarks,
+        }}
+        initialUserBookmarks={data.userBookmarks.map((bookmark) => ({
+          id: bookmark.id,
+          title: bookmark.title,
+          pageNumber: bookmark.pageNumber,
+        }))}
+      />
+    )
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
       <PageHeader
@@ -24,33 +50,9 @@ export default async function ServiceManualPage() {
         }
       />
 
-      {data ? (
-        <ManualViewerClient
-          manual={{
-            id: data.manual.id,
-            title: data.manual.title,
-            make: data.manual.make,
-            model: data.manual.model,
-            startYear: data.manual.startYear,
-            endYear: data.manual.endYear,
-            fileUrl: data.manual.fileUrl,
-            fileName: data.manual.fileName,
-            fileSize: data.manual.fileSize,
-            purchaseUrl: data.manual.purchaseUrl,
-            indexStatus: data.manual.indexStatus,
-            suggestedBookmarks: data.manual.suggestedBookmarks,
-          }}
-          initialUserBookmarks={data.userBookmarks.map((bookmark) => ({
-            id: bookmark.id,
-            title: bookmark.title,
-            pageNumber: bookmark.pageNumber,
-          }))}
-        />
-      ) : (
-        <ServiceManualEmptyState
-          hasVehicleProfile={Boolean(car.brand && car.model && car.year)}
-        />
-      )}
+      <ServiceManualEmptyState
+        hasVehicleProfile={Boolean(car.brand && car.model && car.year)}
+      />
     </div>
   )
 }

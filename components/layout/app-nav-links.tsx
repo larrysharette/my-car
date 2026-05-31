@@ -7,6 +7,7 @@ import {
   Camera,
   Gauge,
   GasPump,
+  MapTrifold,
   Gear,
   Heart,
   House,
@@ -23,6 +24,7 @@ import { cn } from "~/lib/utils"
 export const appNavItems = [
   { href: "/", label: "Dashboard", icon: House },
   { href: "/gas", label: "Gas Log", icon: GasPump },
+  { href: "/find-gas", label: "Find Stations", icon: MapTrifold },
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
   { href: "/inspections", label: "Inspections", icon: ListChecks },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
@@ -43,14 +45,21 @@ export function AppNavLinks({
   const pathname = usePathname()
 
   return (
-    <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground", className)}>
+    <div
+      className={cn(
+        "flex h-full flex-col bg-sidebar text-sidebar-foreground",
+        className
+      )}
+    >
       <div className="p-4">
         <div className="flex items-center gap-2">
           <Gauge className="size-6 text-primary" weight="duotone" />
           <div className="min-w-0">
             <p className="text-sm font-medium">My Car</p>
             {carName ? (
-              <p className="truncate text-xs text-muted-foreground">{carName}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {carName}
+              </p>
             ) : null}
           </div>
         </div>
@@ -66,7 +75,7 @@ export function AppNavLinks({
               href={href}
               onClick={onNavigate}
               className={cn(
-                "flex min-h-11 items-center gap-2 rounded-md px-3 py-2.5 text-sm transition-colors border-l-2 touch-manipulation",
+                "flex min-h-11 touch-manipulation items-center gap-2 rounded-md border-l-2 px-3 py-2.5 text-sm transition-colors",
                 active
                   ? "border-l-primary bg-sidebar-accent text-sidebar-accent-foreground"
                   : "border-l-transparent hover:bg-sidebar-accent/50"
@@ -80,7 +89,11 @@ export function AppNavLinks({
       </nav>
       <div className="p-4">
         <form action={signOut}>
-          <Button type="submit" variant="ghost" className="w-full justify-start gap-2">
+          <Button
+            type="submit"
+            variant="ghost"
+            className="w-full justify-start gap-2"
+          >
             <SignOut className="size-4" />
             Sign out
           </Button>

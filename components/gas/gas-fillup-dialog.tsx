@@ -45,6 +45,7 @@ import { previewFillupMpg } from "~/lib/metrics/fillup-preview"
 import {
   gasLogFormSchema,
   gasLogValuesToFormData,
+  type GasLogValues,
 } from "~/lib/validations/gas-log"
 import {
   createGasLog,
@@ -181,16 +182,35 @@ function FillupLocationSection({
   )
 }
 
+function buildFillupDefaults(
+  initialValues?: Partial<GasLogValues>
+): GasLogValues {
+  return {
+    date: initialValues?.date ?? new Date(),
+    fuelType: initialValues?.fuelType ?? "regular",
+    gallons: initialValues?.gallons,
+    totalPrice: initialValues?.totalPrice,
+    pricePerGallon: initialValues?.pricePerGallon,
+    trip: initialValues?.trip,
+    odometer: initialValues?.odometer,
+    notes: initialValues?.notes ?? "",
+    gpsLatitude: initialValues?.gpsLatitude,
+    gpsLongitude: initialValues?.gpsLongitude,
+  }
+}
+
 function GasFillupForm({
   open,
   onCancel,
   onSuccess,
   showMobileFooter,
+  initialValues,
 }: {
   open: boolean
   onCancel: () => void
   onSuccess: () => void
   showMobileFooter?: boolean
+  initialValues?: Partial<GasLogValues>
 }) {
   const [pending, startTransition] = useTransition()
   const [location, setLocation] = useState<LocationState>({ status: "idle" })
@@ -199,16 +219,7 @@ function GasFillupForm({
   const watchIdRef = useRef<number | null>(null)
 
   const form = useForm({
-    defaultValues: {
-      date: new Date(),
-      fuelType: "regular" as "regular" | "mid-grade" | "premium" | "diesel",
-      gallons: undefined as number | undefined,
-      totalPrice: undefined as number | undefined,
-      pricePerGallon: undefined as number | undefined,
-      trip: undefined as number | undefined,
-      odometer: undefined as number | undefined,
-      notes: "",
-    },
+    defaultValues: buildFillupDefaults(initialValues),
     validators: {
       onSubmit: zodFormValidator(gasLogFormSchema),
     },
@@ -313,9 +324,28 @@ function GasFillupForm({
     if (!open) {
       clearLocationWatch()
       setLocation({ status: "idle" })
+      return () => clearLocationWatch()
     }
+
+    const defaults = buildFillupDefaults(initialValues)
+    form.reset(defaults)
+    ppgManualRef.current = defaults.pricePerGallon != null
+
+    if (
+      defaults.gpsLatitude != null &&
+      defaults.gpsLongitude != null
+    ) {
+      setLocation({
+        status: "ready",
+        lat: defaults.gpsLatitude,
+        lng: defaults.gpsLongitude,
+      })
+    } else {
+      setLocation({ status: "idle" })
+    }
+
     return () => clearLocationWatch()
-  }, [open])
+  }, [open, initialValues, form])
 
   useEffect(() => {
     if (ppgManualRef.current) return
@@ -605,9 +635,11 @@ function GasFillupForm({
 export function GasFillupDialog({
   open,
   onOpenChange,
+  initialValues,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  initialValues?: Partial<GasLogValues>
 }) {
   const isMobile = useIsMobile()
 
@@ -628,6 +660,7 @@ export function GasFillupDialog({
           <GasFillupForm
             open={open}
             showMobileFooter
+            initialValues={initialValues}
             onCancel={() => onOpenChange(false)}
             onSuccess={handleSuccess}
           />
@@ -644,6 +677,7 @@ export function GasFillupDialog({
         </DialogHeader>
         <GasFillupForm
           open={open}
+          initialValues={initialValues}
           onCancel={() => onOpenChange(false)}
           onSuccess={handleSuccess}
         />

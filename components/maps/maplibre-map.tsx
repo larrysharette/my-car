@@ -2,6 +2,14 @@
 
 import maplibregl from "maplibre-gl"
 import { useEffect, useRef } from "react"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+import { RacingMapShell } from "~/components/maps/racing-map-shell"
+import {
+  applyRacingMapTheme,
+  RACING_MAP_POPUP_CLASS,
+  RACING_MAP_STYLE,
+} from "~/lib/maps/racing-map-theme"
 
 export default function MapLibreMap({
   latitude,
@@ -20,22 +28,38 @@ export default function MapLibreMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
+      style: RACING_MAP_STYLE,
       center: [longitude, latitude],
       zoom: 14,
       interactive,
     })
 
-    new maplibregl.Marker({ color: "#ef4444" })
-      .setLngLat([longitude, latitude])
-      .addTo(map)
-
     mapRef.current = map
+
+    map.once("load", () => {
+      applyRacingMapTheme(map)
+
+      const el = document.createElement("span")
+      el.innerHTML = `<span style="display:block;width:14px;height:14px;border-radius:50%;background:#dc2626;border:2px solid white;box-shadow:0 0 10px rgba(220,38,38,0.55)"></span>`
+
+      new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([longitude, latitude])
+        .setPopup(
+          new maplibregl.Popup({ className: RACING_MAP_POPUP_CLASS }).setText(
+            "Fill-up location"
+          )
+        )
+        .addTo(map)
+    })
 
     return () => {
       map.remove()
     }
   }, [latitude, longitude, interactive])
 
-  return <div ref={containerRef} className="h-full w-full" />
+  return (
+    <RacingMapShell>
+      <div ref={containerRef} className="absolute inset-0 z-0 h-full w-full" />
+    </RacingMapShell>
+  )
 }

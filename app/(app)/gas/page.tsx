@@ -1,5 +1,6 @@
 import { getGasLogs } from "~/server/actions/gas-log"
 import { getCurrentCar } from "~/server/auth/get-car"
+import { FindStationsLink } from "~/components/gas/find-stations-link"
 import { PageHeader } from "~/components/layout/page-header"
 import { GasCharts } from "~/components/gas/gas-charts"
 import { GasLogClient } from "~/components/gas/gas-log-client"
@@ -13,6 +14,7 @@ export default async function GasPage() {
       <PageHeader
         title="Gas Log"
         description="Track fill-ups, MPG, and fuel costs"
+        action={<FindStationsLink />}
       />
       <GasCharts logs={logs} tankSize={tankSize} />
       <GasLogClient logs={logs} />

@@ -8,7 +8,10 @@ import { format } from "date-fns"
 import { Funnel, GridFour, ListBullets } from "@phosphor-icons/react"
 
 import { CreateMaintenanceDialog } from "~/components/maintenance/create-maintenance-dialog"
-import { SystemBadge, systemGradientClass } from "~/components/theme/system-badge"
+import {
+  SystemBadge,
+  systemGradientClass,
+} from "~/components/theme/system-badge"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -29,7 +32,9 @@ import type { maintenanceFiles, maintenanceLog } from "~/server/db/schema"
 
 type MaintenanceLog = typeof maintenanceLog.$inferSelect
 type MaintenanceFile = typeof maintenanceFiles.$inferSelect
-export type MaintenanceLogWithFiles = MaintenanceLog & { files: MaintenanceFile[] }
+export type MaintenanceLogWithFiles = MaintenanceLog & {
+  files: MaintenanceFile[]
+}
 
 function isImageType(fileType: string) {
   return fileType.startsWith("image/")
@@ -41,17 +46,22 @@ function getBannerImage(files: MaintenanceFile[]) {
 
 function statusBadge(status: string | null, completedAt: Date | null) {
   if (completedAt) return { label: "Completed", variant: "default" as const }
-  if (status === "in-progress") return { label: "In progress", variant: "secondary" as const }
+  if (status === "in-progress")
+    return { label: "In progress", variant: "secondary" as const }
   return { label: "Planned", variant: "outline" as const }
 }
 
-export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[] }) {
+export function MaintenanceListClient({
+  logs,
+}: {
+  logs: MaintenanceLogWithFiles[]
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isMobile = useIsMobile()
   const [createOpen, setCreateOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [view, setView] = useState<"table" | "grid">("grid")
+  const [view, setView] = useState<"table" | "grid">("table")
 
   const planned = searchParams.get("planned") === "true"
   const completed = searchParams.get("completed") === "true"
@@ -95,7 +105,10 @@ export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[
       id: "status",
       header: "Status",
       cell: ({ row }) => {
-        const { label, variant } = statusBadge(row.original.status, row.original.completedAt)
+        const { label, variant } = statusBadge(
+          row.original.status,
+          row.original.completedAt
+        )
         return <Badge variant={variant}>{label}</Badge>
       },
     },
@@ -103,7 +116,9 @@ export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[
       accessorKey: "odometer",
       header: "Odometer",
       cell: ({ row }) =>
-        row.original.odometer != null ? row.original.odometer.toLocaleString() : "—",
+        row.original.odometer != null
+          ? row.original.odometer.toLocaleString()
+          : "—",
     },
     {
       id: "actions",
@@ -119,17 +134,91 @@ export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[
   return (
     <>
       <div className="mb-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="md:hidden"
-            onClick={() => setFiltersOpen((o) => !o)}
-          >
-            <Funnel className="mr-1 size-4" />
-            Filters
-          </Button>
+        <div className="flex items-end justify-between gap-2">
+          <div>
+            <div
+              className={cn(
+                "flex flex-col gap-4 rounded-lg border bg-card p-4 md:flex-row md:flex-wrap md:items-end md:border-0 md:bg-transparent md:p-0",
+                !filtersOpen && "hidden lg:flex"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="planned-filter"
+                  checked={planned}
+                  onCheckedChange={(checked) =>
+                    updateFilters({ planned: checked ? "true" : null })
+                  }
+                />
+                <Label htmlFor="planned-filter">Planned</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="completed-filter"
+                  checked={completed}
+                  onCheckedChange={(checked) =>
+                    updateFilters({ completed: checked ? "true" : null })
+                  }
+                />
+                <Label htmlFor="completed-filter">Completed</Label>
+              </div>
+              <div className="space-y-1">
+                <Label>System</Label>
+                <Select
+                  value={system || "all"}
+                  onValueChange={(v) =>
+                    updateFilters({
+                      system: v === "all" ? null : v,
+                      service: null,
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-36">
+                    <SelectValue placeholder="All systems" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All systems</SelectItem>
+                    {systems.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Service</Label>
+                <Select
+                  value={service || "all"}
+                  onValueChange={(v) =>
+                    updateFilters({ service: v === "all" ? null : v })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue placeholder="All services" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All services</SelectItem>
+                    {filteredServices.map(({ system: sys, service: svc }) => (
+                      <SelectItem key={`${sys}-${svc}`} value={svc}>
+                        {svc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setFiltersOpen((o) => !o)}
+            >
+              <Funnel className="mr-1 size-4" />
+              Filters
+            </Button>
+          </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="hidden rounded-md border sm:flex">
               <Button
@@ -156,70 +245,6 @@ export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[
             </Button>
           </div>
         </div>
-
-        <div
-          className={cn(
-            "flex flex-col gap-4 rounded-lg border bg-card p-4 md:flex-row md:flex-wrap md:items-end md:border-0 md:bg-transparent md:p-0",
-            !filtersOpen && "hidden md:flex"
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <Switch
-              id="planned-filter"
-              checked={planned}
-              onCheckedChange={(checked) => updateFilters({ planned: checked ? "true" : null })}
-            />
-            <Label htmlFor="planned-filter">Planned</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="completed-filter"
-              checked={completed}
-              onCheckedChange={(checked) => updateFilters({ completed: checked ? "true" : null })}
-            />
-            <Label htmlFor="completed-filter">Completed</Label>
-          </div>
-          <div className="space-y-1">
-            <Label>System</Label>
-            <Select
-              value={system || "all"}
-              onValueChange={(v) =>
-                updateFilters({ system: v === "all" ? null : v, service: null })
-              }
-            >
-              <SelectTrigger className="w-full sm:w-36">
-                <SelectValue placeholder="All systems" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All systems</SelectItem>
-                {systems.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Service</Label>
-            <Select
-              value={service || "all"}
-              onValueChange={(v) => updateFilters({ service: v === "all" ? null : v })}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="All services" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All services</SelectItem>
-                {filteredServices.map(({ system: sys, service: svc }) => (
-                  <SelectItem key={`${sys}-${svc}`} value={svc}>
-                    {svc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
       </div>
 
       {(isMobile ? "grid" : view) === "table" ? (
@@ -233,7 +258,10 @@ export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[
           ) : (
             logs.map((log) => {
               const banner = getBannerImage(log.files)
-              const { label, variant } = statusBadge(log.status, log.completedAt)
+              const { label, variant } = statusBadge(
+                log.status,
+                log.completedAt
+              )
               return (
                 <Link key={log.id} href={`/maintenance/${log.id}`}>
                   <Card className="h-full overflow-hidden transition-colors hover:ring-primary/30">
@@ -266,7 +294,9 @@ export function MaintenanceListClient({ logs }: { logs: MaintenanceLogWithFiles[
                       <SystemBadge system={log.system} />
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(log.date), "MMM d, yyyy")}
-                        {log.odometer != null ? ` · ${log.odometer.toLocaleString()} mi` : ""}
+                        {log.odometer != null
+                          ? ` · ${log.odometer.toLocaleString()} mi`
+                          : ""}
                       </p>
                     </CardContent>
                   </Card>

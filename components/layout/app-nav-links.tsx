@@ -6,6 +6,7 @@ import {
   Camera,
   Gauge,
   GasPump,
+  Gear,
   House,
   SignOut,
   Wrench,
@@ -21,6 +22,7 @@ export const appNavItems = [
   { href: "/gas", label: "Gas Log", icon: GasPump },
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
   { href: "/gallery", label: "Gallery", icon: Camera },
+  { href: "/settings", label: "Settings", icon: Gear },
 ] as const
 
 export function AppNavLinks({

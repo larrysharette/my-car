@@ -24,6 +24,7 @@ export const cars = createTable("cars", {
   fuel: varchar("fuel", { length: 256 }),
   transmission: varchar("transmission", { length: 256 }),
   price: decimal("price", { precision: 10, scale: 2 }),
+  tankSize: decimal("tank_size", { precision: 10, scale: 2 }),
   hash: varchar("hash", { length: 256 }),
   createdAt,
   updatedAt,

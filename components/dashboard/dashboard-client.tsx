@@ -3,12 +3,7 @@
 import { useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
-import {
-  GasPump,
-  Heart,
-  UploadSimple,
-  Wrench,
-} from "@phosphor-icons/react"
+import { GasPump, Heart, UploadSimple, Wrench } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { GasCharts } from "~/components/gas/gas-charts"
@@ -28,8 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table"
+import type { MetricWithTrend } from "~/lib/metrics/dashboard-metrics"
 import type { getDashboardData } from "~/lib/metrics/gas"
 import { uploadCarFile } from "~/server/actions/files"
+import type { StatTrend } from "~/components/theme/stat-card"
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>
 
@@ -43,15 +40,39 @@ function formatMiles(value: number | null | undefined) {
   return `${Math.round(value).toLocaleString()} mi`
 }
 
+function toTrend(
+  metric: MetricWithTrend,
+  favorableWhenUp: boolean
+): StatTrend | undefined {
+  if (metric.changePercent == null) return undefined
+  const favorable = favorableWhenUp
+    ? metric.changePercent > 0
+    : metric.changePercent < 0
+  return { changePercent: metric.changePercent, favorable }
+}
+
+function metricSub(metric: MetricWithTrend, monthLabel: string) {
+  if (metric.value == null || metric.changePercent == null) return monthLabel
+  return undefined
+}
+
 function carTitle(car: DashboardData["car"]) {
   if (!car) return "My Car"
   const parts = [car.year, car.brand, car.model].filter(Boolean)
-  return parts.length > 0 ? parts.join(" ") : car.name ?? car.username
+  return parts.length > 0 ? parts.join(" ") : (car.name ?? car.username)
 }
 
 export function DashboardClient({ data }: { data: DashboardData }) {
-  const { car, primaryImage, metrics, logs, recentMaintenance, recentWishlist, reminders } =
-    data
+  const {
+    car,
+    primaryImage,
+    metrics,
+    tankSize,
+    logs,
+    recentMaintenance,
+    recentWishlist,
+    reminders,
+  } = data
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pending, startTransition] = useTransition()
@@ -80,23 +101,31 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       <HeroBanner
         imageUrl={primaryImage?.imageUrl}
         title={carTitle(car)}
-        subtitle={car?.name && carTitle(car) !== car.name ? car.name : undefined}
+        subtitle={
+          car?.name && carTitle(car) !== car.name ? car.name : undefined
+        }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="Avg gas spend"
-          value={formatCurrency(metrics.avgSpend)}
+          value={formatCurrency(metrics.avgSpend.value)}
+          trend={toTrend(metrics.avgSpend, false)}
+          sub={metricSub(metrics.avgSpend, metrics.monthLabel)}
           category="gas"
         />
         <StatCard
           label="Avg price/gal"
-          value={formatCurrency(metrics.avgPricePerGallon, 3)}
+          value={formatCurrency(metrics.avgPricePerGallon.value, 3)}
+          trend={toTrend(metrics.avgPricePerGallon, false)}
+          sub={metricSub(metrics.avgPricePerGallon, metrics.monthLabel)}
           category="gas"
         />
         <StatCard
           label="Avg miles"
-          value={formatMiles(metrics.avgMiles)}
+          value={formatMiles(metrics.avgMiles.value)}
+          trend={toTrend(metrics.avgMiles, true)}
+          sub={metricSub(metrics.avgMiles, metrics.monthLabel)}
           category="maintenance"
         />
         <StatCard
@@ -108,47 +137,43 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <QuickActionButton
-            icon={GasPump}
-            label="Gas fill-up"
-            accent="yellow"
-            onClick={() => setGasOpen(true)}
-          />
-          <QuickActionButton
-            icon={Wrench}
-            label="Maintenance"
-            accent="red"
-            onClick={() => setMaintenanceOpen(true)}
-          />
-          <QuickActionButton
-            icon={Heart}
-            label="Wishlist"
-            accent="green"
-            onClick={() => setWishlistOpen(true)}
-          />
-          <QuickActionButton
-            icon={UploadSimple}
-            label="Upload"
-            accent="blue"
-            onClick={() => fileInputRef.current?.click()}
-            className={pending ? "pointer-events-none opacity-50" : undefined}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-        </div>
+        <h2 className="text-sm font-medium">Gas trends</h2>
+        <GasCharts logs={logs} tankSize={tankSize} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium">Reminders</h2>
+        {reminders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No upcoming maintenance reminders
+          </p>
+        ) : (
+          <ul className="divide-y rounded-lg border">
+            {reminders.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
+              >
+                <SystemBadge system={item.system} />
+                <span className="text-sm font-medium">{item.service}</span>
+                <span className="text-xs text-muted-foreground">
+                  {item.plannedFor
+                    ? `Due ${format(new Date(item.plannedFor), "MMM d, yyyy")}`
+                    : item.odometer
+                      ? `At ${item.odometer.toLocaleString()} mi`
+                      : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-medium">Recent maintenance</h2>
-            <Button variant="ghost" size="sm" asChild className="h-8 text-xs">
+            <Button variant="ghost" size="sm" asChild className="text-xs">
               <Link href="/maintenance">View all</Link>
             </Button>
           </div>
@@ -168,7 +193,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{log.service}</p>
+                        <p className="truncate text-sm font-medium">
+                          {log.service}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(log.date), "MMM d, yyyy")}
                         </p>
@@ -202,12 +229,16 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 ) : (
                   recentMaintenance.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell>{format(new Date(log.date), "MMM d, yyyy")}</TableCell>
+                      <TableCell>
+                        {format(new Date(log.date), "MMM d, yyyy")}
+                      </TableCell>
                       <TableCell>
                         <SystemBadge system={log.system} />
                       </TableCell>
                       <TableCell>{log.service}</TableCell>
-                      <TableCell className="capitalize">{log.status ?? "—"}</TableCell>
+                      <TableCell className="capitalize">
+                        {log.status ?? "—"}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -217,7 +248,12 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-sm font-medium">Recent wishlist</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-medium">Recent wishlist</h2>
+            <Button variant="ghost" size="sm" asChild className="text-xs">
+              <Link href="/wishlist">View all</Link>
+            </Button>
+          </div>
 
           <ul className="space-y-2 md:hidden">
             {recentWishlist.length === 0 ? (
@@ -229,7 +265,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 <li key={item.id} className="rounded-lg border bg-card p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{item.name}</p>
+                      <p className="truncate text-sm font-medium">
+                        {item.name}
+                      </p>
                       <p className="font-mono text-xs text-muted-foreground">
                         ${Number(item.price).toFixed(2)} × {item.quantity}
                       </p>
@@ -278,37 +316,21 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         </section>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium">Reminders</h2>
-        {reminders.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No upcoming maintenance reminders</p>
-        ) : (
-          <ul className="divide-y rounded-lg border">
-            {reminders.map((item) => (
-              <li key={item.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <SystemBadge system={item.system} />
-                <span className="text-sm font-medium">{item.service}</span>
-                <span className="text-xs text-muted-foreground">
-                  {item.plannedFor
-                    ? `Due ${format(new Date(item.plannedFor), "MMM d, yyyy")}`
-                    : item.odometer
-                      ? `At ${item.odometer.toLocaleString()} mi`
-                      : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium">Gas trends</h2>
-        <GasCharts logs={logs} />
-      </section>
+      <div
+        className="fixed right-4 z-30"
+        style={{ bottom: "max(1rem, env(safe-area-inset-bottom, 1rem))" }}
+      >
+        <Button
+          size="lg"
+          className="h-14 rounded-full px-5 shadow-lg"
+          onClick={() => setGasOpen(true)}
+        >
+          <GasPump className="mr-2 size-5" weight="fill" />
+          Fill-up
+        </Button>
+      </div>
 
       <GasFillupDialog open={gasOpen} onOpenChange={setGasOpen} />
-      <CreateMaintenanceDialog open={maintenanceOpen} onOpenChange={setMaintenanceOpen} />
-      <WishlistDialog open={wishlistOpen} onOpenChange={setWishlistOpen} />
     </div>
   )
 }

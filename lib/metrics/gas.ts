@@ -1,40 +1,14 @@
 import { desc, eq, and, isNull, isNotNull, ne } from "drizzle-orm"
 
+import {
+  CHART_LOOKBACK_DAYS,
+  computeMonthlyGasMetrics,
+  filterLogsWithinDays,
+} from "~/lib/metrics/dashboard-metrics"
 import db from "~/server/db"
 import { cars, gasLog, maintenanceLog, wishlist } from "~/server/db/schema"
 
 export type GasLogRow = typeof gasLog.$inferSelect
-
-export function computeGasMetrics(logs: GasLogRow[]) {
-  const withPrice = logs.filter((l) => l.totalPrice)
-  const withMpg = logs.filter((l) => l.mpg)
-  const withTrip = logs.filter((l) => l.trip)
-
-  const avgSpend =
-    withPrice.length > 0
-      ? withPrice.reduce((s, l) => s + Number(l.totalPrice), 0) / withPrice.length
-      : null
-
-  const avgPricePerGallon =
-    logs.filter((l) => l.pricePerGallon).length > 0
-      ? logs
-          .filter((l) => l.pricePerGallon)
-          .reduce((s, l) => s + Number(l.pricePerGallon), 0) /
-        logs.filter((l) => l.pricePerGallon).length
-      : null
-
-  const avgMiles =
-    withTrip.length > 0
-      ? withTrip.reduce((s, l) => s + (l.trip ?? 0), 0) / withTrip.length
-      : null
-
-  const avgMpg =
-    withMpg.length > 0
-      ? withMpg.reduce((s, l) => s + Number(l.mpg), 0) / withMpg.length
-      : null
-
-  return { avgSpend, avgPricePerGallon, avgMiles, avgMpg }
-}
 
 export async function getPreviousGasLogOdometer(
   carId: string,
@@ -120,13 +94,15 @@ export async function getDashboardData(carId: string) {
 
   const primaryImage =
     car?.images.find((img) => img.isPrimary) ?? car?.images[0] ?? null
-  const metrics = computeGasMetrics(logs)
+  const metrics = computeMonthlyGasMetrics(logs)
+  const tankSize = car?.tankSize != null ? Number(car.tankSize) : null
 
   return {
     car,
     primaryImage,
     metrics,
-    logs: logs.slice(0, 12),
+    tankSize,
+    logs: filterLogsWithinDays(logs, CHART_LOOKBACK_DAYS),
     recentMaintenance,
     recentWishlist,
     reminders: filteredReminders.slice(0, 10),

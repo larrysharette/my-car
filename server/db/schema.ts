@@ -30,9 +30,38 @@ export const cars = createTable("cars", {
   price: decimal("price", { precision: 10, scale: 2 }),
   tankSize: decimal("tank_size", { precision: 10, scale: 2 }),
   hash: varchar("hash", { length: 256 }),
+  serviceManualId: nanoid("service_manual_id"),
   createdAt,
   updatedAt,
 })
+
+export const serviceManuals = createTable(
+  "service_manuals",
+  {
+    id,
+    make: varchar("make", { length: 256 }).notNull(),
+    model: varchar("model", { length: 256 }).notNull(),
+    startYear: integer("start_year").notNull(),
+    endYear: integer("end_year").notNull(),
+    fileUrl: varchar("file_url", { length: 512 }).notNull(),
+    fileName: varchar("file_name", { length: 256 }).notNull(),
+    fileSize: integer("file_size"),
+    purchaseUrl: varchar("purchase_url", { length: 512 }).notNull(),
+    uploadedByCarId: nanoid("uploaded_by_car_id").notNull(),
+    title: varchar("title", { length: 256 }),
+    indexStatus: varchar("index_status", { length: 32 }).notNull().default("pending"),
+    textSource: varchar("text_source", { length: 32 }).default("native"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.uploadedByCarId],
+      foreignColumns: [cars.id],
+      name: "fk_service_manuals_cars",
+    }),
+  ]
+)
 
 export const carSessions = createTable(
   "car_sessions",
@@ -364,6 +393,66 @@ export const notificationLog = createTable(
       columns: [table.systemId],
       foreignColumns: [carSystems.id],
       name: "fk_notification_log_car_systems",
+    }),
+  ]
+)
+
+export const serviceManualPages = createTable(
+  "service_manual_pages",
+  {
+    id,
+    serviceManualId: nanoid("service_manual_id").notNull(),
+    pageNumber: integer("page_number").notNull(),
+    textContent: text("text_content").notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.serviceManualId],
+      foreignColumns: [serviceManuals.id],
+      name: "fk_service_manual_pages_service_manuals",
+    }),
+  ]
+)
+
+export const serviceManualSuggestedBookmarks = createTable(
+  "service_manual_suggested_bookmarks",
+  {
+    id,
+    serviceManualId: nanoid("service_manual_id").notNull(),
+    title: varchar("title", { length: 256 }).notNull(),
+    pageNumber: integer("page_number").notNull(),
+    category: varchar("category", { length: 256 }),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.serviceManualId],
+      foreignColumns: [serviceManuals.id],
+      name: "fk_service_manual_suggested_bookmarks_service_manuals",
+    }),
+  ]
+)
+
+export const serviceManualUserBookmarks = createTable(
+  "service_manual_user_bookmarks",
+  {
+    id,
+    carId: nanoid("car_id").notNull(),
+    serviceManualId: nanoid("service_manual_id").notNull(),
+    title: varchar("title", { length: 256 }).notNull(),
+    pageNumber: integer("page_number").notNull(),
+    createdAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.carId],
+      foreignColumns: [cars.id],
+      name: "fk_service_manual_user_bookmarks_cars",
+    }),
+    foreignKey({
+      columns: [table.serviceManualId],
+      foreignColumns: [serviceManuals.id],
+      name: "fk_service_manual_user_bookmarks_service_manuals",
     }),
   ]
 )

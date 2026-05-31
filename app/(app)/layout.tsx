@@ -1,5 +1,6 @@
 import { AppHeader } from "~/components/layout/app-header"
 import { AppSidebar } from "~/components/layout/app-sidebar"
+import { LinkManualPrompt } from "~/components/service-manual/link-manual-prompt"
 import { getCurrentCar } from "~/server/auth/get-car"
 
 export default async function AppLayout({
@@ -19,6 +20,16 @@ export default async function AppLayout({
           {children}
         </main>
       </div>
+      {car ? (
+        <LinkManualPrompt
+          car={{
+            serviceManualId: car.serviceManualId,
+            brand: car.brand,
+            model: car.model,
+            year: car.year,
+          }}
+        />
+      ) : null}
     </div>
   )
 }

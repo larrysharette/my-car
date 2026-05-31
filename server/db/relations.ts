@@ -19,6 +19,13 @@ export const relations = defineRelations(schema, (r) => ({
       optional: true,
     }),
     notificationLogs: r.many.notificationLog(),
+    serviceManual: r.one.serviceManuals({
+      from: r.cars.serviceManualId,
+      to: r.serviceManuals.id,
+      optional: true,
+    }),
+    serviceManualUserBookmarks: r.many.serviceManualUserBookmarks(),
+    uploadedServiceManuals: r.many.serviceManuals(),
   },
   carImages: {
     car: r.one.cars({
@@ -118,6 +125,37 @@ export const relations = defineRelations(schema, (r) => ({
     system: r.one.carSystems({
       from: r.notificationLog.systemId,
       to: r.carSystems.id,
+    }),
+  },
+  serviceManuals: {
+    uploadedByCar: r.one.cars({
+      from: r.serviceManuals.uploadedByCarId,
+      to: r.cars.id,
+    }),
+    pages: r.many.serviceManualPages(),
+    suggestedBookmarks: r.many.serviceManualSuggestedBookmarks(),
+    userBookmarks: r.many.serviceManualUserBookmarks(),
+  },
+  serviceManualPages: {
+    manual: r.one.serviceManuals({
+      from: r.serviceManualPages.serviceManualId,
+      to: r.serviceManuals.id,
+    }),
+  },
+  serviceManualSuggestedBookmarks: {
+    manual: r.one.serviceManuals({
+      from: r.serviceManualSuggestedBookmarks.serviceManualId,
+      to: r.serviceManuals.id,
+    }),
+  },
+  serviceManualUserBookmarks: {
+    car: r.one.cars({
+      from: r.serviceManualUserBookmarks.carId,
+      to: r.cars.id,
+    }),
+    manual: r.one.serviceManuals({
+      from: r.serviceManualUserBookmarks.serviceManualId,
+      to: r.serviceManuals.id,
     }),
   },
 }))

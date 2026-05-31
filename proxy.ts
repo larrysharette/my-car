@@ -12,6 +12,7 @@ const protectedPaths = [
   "/settings",
   "/notifications",
   "/export",
+  "/service-manual",
 ]
 const authPaths = ["/signin", "/signup"]
 
@@ -47,6 +48,7 @@ export const proxyConfig = {
     "/settings/:path*",
     "/notifications/:path*",
     "/export/:path*",
+    "/service-manual/:path*",
     "/signin",
     "/signup",
   ],

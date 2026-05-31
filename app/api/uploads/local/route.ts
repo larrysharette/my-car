@@ -15,12 +15,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing file or path" }, { status: 400 })
     }
 
-    if (!pathname.startsWith(`${carId}/`)) {
+    const isVideoUpload = pathname.startsWith(`${carId}/`)
+    const isManualUpload = pathname.startsWith("service-manuals/")
+
+    if (!isVideoUpload && !isManualUpload) {
       return NextResponse.json({ error: "Invalid upload path" }, { status: 403 })
     }
 
-    if (!file.type.startsWith("video/")) {
+    if (isVideoUpload && !file.type.startsWith("video/")) {
       return NextResponse.json({ error: "Only video files are allowed" }, { status: 400 })
+    }
+
+    if (isManualUpload && file.type !== "application/pdf") {
+      return NextResponse.json({ error: "Only PDF files are allowed" }, { status: 400 })
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())

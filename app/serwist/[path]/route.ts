@@ -7,7 +7,10 @@ const revision =
 
 export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
   createSerwistRoute({
-    additionalPrecacheEntries: [{ url: "/~offline", revision }],
+    additionalPrecacheEntries: [
+      { url: "/~offline", revision },
+      { url: "/service-manual", revision },
+    ],
     swSrc: "app/sw.ts",
     useNativeEsbuild: true,
   })

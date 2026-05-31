@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Bell,
+  BookOpen,
   FileArrowDown,
   Camera,
   Gauge,
@@ -27,6 +28,7 @@ export const appNavItems = [
   { href: "/gas", label: "Gas Log", icon: GasPump },
   { href: "/find-gas", label: "Find Stations", icon: MapTrifold },
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
+  { href: "/service-manual", label: "Service Manual", icon: BookOpen },
   { href: "/inspections", label: "Inspections", icon: ListChecks },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/gallery", label: "Gallery", icon: Camera },

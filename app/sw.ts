@@ -1,3 +1,4 @@
+import { CacheFirst } from "serwist"
 import { defaultCache } from "@serwist/turbopack/worker"
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist"
 import { Serwist } from "serwist"
@@ -16,12 +17,29 @@ type PushPayload = {
   url?: string
 }
 
+const serviceManualPdfCache = new CacheFirst({
+  cacheName: "service-manual-pdfs",
+})
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    ...defaultCache,
+    {
+      matcher({ request, url }) {
+        if (request.method !== "GET") return false
+        if (url.pathname.startsWith("/api/files/service-manuals/")) return true
+        if (url.pathname.includes("/service-manuals/") && url.pathname.endsWith(".pdf")) {
+          return true
+        }
+        return request.destination === "document" && url.pathname === "/service-manual"
+      },
+      handler: serviceManualPdfCache,
+    },
+  ],
   fallbacks: {
     entries: [
       {

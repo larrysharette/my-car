@@ -3,6 +3,36 @@ import { NextResponse } from "next/server"
 
 import { requireCarId } from "~/server/auth/get-car"
 
+type UploadKind = "video" | "service-manual"
+
+function resolveUploadKind(
+  pathname: string,
+  carId: string,
+  clientPayload?: string | null
+): UploadKind | null {
+  if (pathname.startsWith(`${carId}/`)) {
+    return "video"
+  }
+
+  if (pathname.startsWith("service-manuals/")) {
+    if (clientPayload) {
+      const payload = JSON.parse(clientPayload) as {
+        uploadKind?: string
+        manualId?: string
+      }
+      if (payload.uploadKind !== "service-manual" || !payload.manualId) {
+        throw new Error("Invalid upload session")
+      }
+      if (!pathname.startsWith(`service-manuals/${payload.manualId}/`)) {
+        throw new Error("Invalid upload path")
+      }
+    }
+    return "service-manual"
+  }
+
+  return null
+}
+
 export async function POST(request: Request) {
   try {
     const carId = await requireCarId()
@@ -12,11 +42,12 @@ export async function POST(request: Request) {
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
-        if (!pathname.startsWith(`${carId}/`)) {
+        const kind = resolveUploadKind(pathname, carId, clientPayload)
+        if (!kind) {
           throw new Error("Invalid upload path")
         }
 
-        if (clientPayload) {
+        if (kind === "video" && clientPayload) {
           const payload = JSON.parse(clientPayload) as { carId?: string }
           if (payload.carId !== carId) {
             throw new Error("Invalid upload session")
@@ -24,7 +55,8 @@ export async function POST(request: Request) {
         }
 
         return {
-          allowedContentTypes: ["video/*"],
+          allowedContentTypes:
+            kind === "service-manual" ? ["application/pdf"] : ["video/*"],
           maximumSizeInBytes: 512 * 1024 * 1024,
           addRandomSuffix: false,
         }

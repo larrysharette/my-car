@@ -11,6 +11,8 @@ export const relations = defineRelations(schema, (r) => ({
     maintenanceLogs: r.many.maintenanceLog(),
     gasLogs: r.many.gasLog(),
     wishlist: r.many.wishlist(),
+    carSystems: r.many.carSystems(),
+    inspectionLogs: r.many.inspectionLog(),
     sessions: r.many.carSessions(),
   },
   carImages: {
@@ -61,6 +63,34 @@ export const relations = defineRelations(schema, (r) => ({
     car: r.one.cars({
       from: r.wishlist.carId,
       to: r.cars.id,
+    }),
+  },
+  carSystems: {
+    car: r.one.cars({
+      from: r.carSystems.carId,
+      to: r.cars.id,
+    }),
+    inspectionLogs: r.many.inspectionLog(),
+  },
+  inspectionLog: {
+    car: r.one.cars({
+      from: r.inspectionLog.carId,
+      to: r.cars.id,
+    }),
+    carSystem: r.one.carSystems({
+      from: r.inspectionLog.carSystemId,
+      to: r.carSystems.id,
+    }),
+    maintenanceLog: r.one.maintenanceLog({
+      from: r.inspectionLog.maintenanceLogId,
+      to: r.maintenanceLog.id,
+    }),
+    files: r.many.inspectionFiles(),
+  },
+  inspectionFiles: {
+    inspection: r.one.inspectionLog({
+      from: r.inspectionFiles.inspectionLogId,
+      to: r.inspectionLog.id,
     }),
   },
 }))

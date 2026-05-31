@@ -28,6 +28,7 @@ import { cn } from "~/lib/utils"
 import {
   setPrimaryImage,
   updateCarImageMeta,
+  updateCarFileMeta,
   uploadCarFile,
   uploadCarImage,
 } from "~/server/actions/files"
@@ -51,9 +52,17 @@ function isVideoType(fileType: string) {
   return fileType.startsWith("video/")
 }
 
+function formatFileSize(bytes: number | null | undefined) {
+  if (bytes == null) return null
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function GalleryClient({ gallery }: { gallery: GalleryData }) {
   const [filter, setFilter] = useState<FilterType>("all")
   const [editImage, setEditImage] = useState<CarImage | null>(null)
+  const [editFile, setEditFile] = useState<CarFile | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [uploadKind, setUploadKind] = useState<"image" | "file">("image")
   const [pending, startTransition] = useTransition()
@@ -67,6 +76,7 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
       description: img.imageDescription,
       fileType: img.imageType,
       isPrimary: img.isPrimary,
+      fileSize: img.imageSize,
       raw: img,
     }))
     const fileItems = gallery.files.map((file) => ({
@@ -77,6 +87,7 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
       description: file.fileDescription,
       fileType: file.fileType,
       isPrimary: false,
+      fileSize: file.fileSize,
       raw: file,
     }))
     return [...imageItems, ...fileItems].sort(
@@ -128,6 +139,24 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
       if (result.success) {
         toast.success("Updated")
         setEditImage(null)
+      } else {
+        toast.error(result.error)
+      }
+    })
+  }
+
+  function handleSaveFileMeta(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!editFile) return
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const result = await updateCarFileMeta(editFile.id, {
+        fileName: (fd.get("fileName") as string) || undefined,
+        fileDescription: (fd.get("description") as string) || undefined,
+      })
+      if (result.success) {
+        toast.success("Updated")
+        setEditFile(null)
       } else {
         toast.error(result.error)
       }
@@ -203,6 +232,11 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                 <CardTitle className="truncate text-sm">{item.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 pt-0">
+                {item.fileSize != null ? (
+                  <p className="text-xs text-muted-foreground">
+                    {formatFileSize(item.fileSize)}
+                  </p>
+                ) : null}
                 {item.description ? (
                   <p className="line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
                 ) : null}
@@ -229,11 +263,21 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                       </Button>
                     </>
                   ) : (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={item.url} target="_blank" rel="noreferrer">
-                        Open
-                      </a>
-                    </Button>
+                    <>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={item.url} target="_blank" rel="noreferrer">
+                          Open
+                        </a>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditFile(item.raw as CarFile)}
+                      >
+                        Edit
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>
@@ -254,6 +298,7 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                 id="file"
                 name="file"
                 type="file"
+                capture={uploadKind === "image" ? "environment" : undefined}
                 accept={uploadKind === "image" ? "image/*,video/*" : undefined}
                 required
               />
@@ -317,6 +362,48 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditImage(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={pending}>
+                  {pending ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editFile} onOpenChange={(o) => !o && setEditFile(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit file details</DialogTitle>
+          </DialogHeader>
+          {editFile ? (
+            <form onSubmit={handleSaveFileMeta} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-file-name">File name</Label>
+                <Input
+                  id="edit-file-name"
+                  name="fileName"
+                  defaultValue={editFile.fileName}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-file-description">Description</Label>
+                <Textarea
+                  id="edit-file-description"
+                  name="description"
+                  rows={3}
+                  defaultValue={editFile.fileDescription ?? ""}
+                />
+              </div>
+              {editFile.fileSize != null ? (
+                <p className="text-xs text-muted-foreground">
+                  Size: {formatFileSize(editFile.fileSize)}
+                </p>
+              ) : null}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditFile(null)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={pending}>

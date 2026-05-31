@@ -1,19 +1,16 @@
 "use client"
 
-import { useRef, useState, useTransition } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
-import { GasPump, Heart, UploadSimple, Wrench } from "@phosphor-icons/react"
-import { toast } from "sonner"
+import { GasPump } from "@phosphor-icons/react"
 
 import { GasCharts } from "~/components/gas/gas-charts"
 import { GasFillupDialog } from "~/components/gas/gas-fillup-dialog"
-import { CreateMaintenanceDialog } from "~/components/maintenance/create-maintenance-dialog"
+import { DashboardInspectionsSection } from "~/components/dashboard/dashboard-inspections"
 import { HeroBanner } from "~/components/theme/hero-banner"
-import { QuickActionButton } from "~/components/theme/quick-action-button"
 import { StatCard } from "~/components/theme/stat-card"
 import { SystemBadge } from "~/components/theme/system-badge"
-import { WishlistDialog } from "~/components/wishlist/wishlist-dialog"
 import { Button } from "~/components/ui/button"
 import {
   Table,
@@ -25,7 +22,6 @@ import {
 } from "~/components/ui/table"
 import type { MetricWithTrend } from "~/lib/metrics/dashboard-metrics"
 import type { getDashboardData } from "~/lib/metrics/gas"
-import { uploadCarFile } from "~/server/actions/files"
 import type { StatTrend } from "~/components/theme/stat-card"
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>
@@ -67,34 +63,18 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     car,
     primaryImage,
     metrics,
+    monthlyCosts,
+    costOfOwnership,
     tankSize,
     logs,
     recentMaintenance,
     recentWishlist,
     reminders,
+    maintenanceDue,
+    inspectionsDue,
   } = data
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [pending, startTransition] = useTransition()
   const [gasOpen, setGasOpen] = useState(false)
-  const [maintenanceOpen, setMaintenanceOpen] = useState(false)
-  const [wishlistOpen, setWishlistOpen] = useState(false)
-
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const formData = new FormData()
-    formData.set("file", file)
-    startTransition(async () => {
-      const result = await uploadCarFile(formData)
-      if (result.success) {
-        toast.success("File uploaded")
-      } else {
-        toast.error(result.error)
-      }
-      if (fileInputRef.current) fileInputRef.current.value = ""
-    })
-  }
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -136,6 +116,39 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         />
       </div>
 
+      <section className="space-y-3 rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-medium">Monthly costs — {monthlyCosts.monthLabel}</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Gas</p>
+            <p className="font-mono text-lg">{formatCurrency(monthlyCosts.gasSpend)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Maintenance</p>
+            <p className="font-mono text-lg">
+              {formatCurrency(monthlyCosts.maintenanceSpend)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="font-mono text-lg font-medium">
+              {formatCurrency(monthlyCosts.totalSpend)}
+            </p>
+          </div>
+          {costOfOwnership.purchasePrice != null ? (
+            <div>
+              <p className="text-xs text-muted-foreground">Cost of ownership</p>
+              <p className="font-mono text-lg">
+                {formatCurrency(costOfOwnership.totalWithPurchase)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                incl. ${costOfOwnership.purchasePrice.toLocaleString()} purchase
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
       <section className="space-y-3">
         <h2 className="text-sm font-medium">Gas trends</h2>
         <GasCharts logs={logs} tankSize={tankSize} />
@@ -150,24 +163,31 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         ) : (
           <ul className="divide-y rounded-lg border">
             {reminders.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
-              >
-                <SystemBadge system={item.system} />
-                <span className="text-sm font-medium">{item.service}</span>
-                <span className="text-xs text-muted-foreground">
-                  {item.plannedFor
-                    ? `Due ${format(new Date(item.plannedFor), "MMM d, yyyy")}`
-                    : item.odometer
-                      ? `At ${item.odometer.toLocaleString()} mi`
-                      : null}
-                </span>
+              <li key={item.id}>
+                <Link
+                  href={`/maintenance/${item.id}`}
+                  className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-muted/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
+                >
+                  <SystemBadge system={item.system} />
+                  <span className="text-sm font-medium">{item.service}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {item.plannedFor
+                      ? `Due ${format(new Date(item.plannedFor), "MMM d, yyyy")}`
+                      : item.odometer
+                        ? `At ${item.odometer.toLocaleString()} mi`
+                        : null}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <DashboardInspectionsSection
+        inspectionsDue={inspectionsDue}
+        maintenanceDue={maintenanceDue}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-3">
@@ -178,7 +198,6 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             </Button>
           </div>
 
-          {/* Mobile card list */}
           <ul className="space-y-2 md:hidden">
             {recentMaintenance.length === 0 ? (
               <li className="rounded-lg border px-4 py-6 text-center text-sm text-muted-foreground">
@@ -208,7 +227,6 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             )}
           </ul>
 
-          {/* Desktop table */}
           <div className="hidden rounded-lg border md:block">
             <Table>
               <TableHeader>
@@ -228,7 +246,13 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   </TableRow>
                 ) : (
                   recentMaintenance.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow
+                      key={log.id}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        window.location.href = `/maintenance/${log.id}`
+                      }}
+                    >
                       <TableCell>
                         {format(new Date(log.date), "MMM d, yyyy")}
                       </TableCell>
@@ -251,7 +275,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-medium">Recent wishlist</h2>
             <Button variant="ghost" size="sm" asChild className="text-xs">
-              <Link href="/wishlist">View all</Link>
+              <Link href="/wishlist">Manage</Link>
             </Button>
           </div>
 
@@ -262,18 +286,36 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               </li>
             ) : (
               recentWishlist.map((item) => (
-                <li key={item.id} className="rounded-lg border bg-card p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {item.name}
-                      </p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        ${Number(item.price).toFixed(2)} × {item.quantity}
-                      </p>
+                <li key={item.id}>
+                  <Link
+                    href="/wishlist"
+                    className="block rounded-lg border bg-card p-3 active:bg-muted/50"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {item.url ? (
+                            <span
+                              className="text-primary"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                window.open(item.url!, "_blank", "noopener,noreferrer")
+                              }}
+                            >
+                              {item.name}
+                            </span>
+                          ) : (
+                            item.name
+                          )}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          ${Number(item.price).toFixed(2)} × {item.quantity}
+                        </p>
+                      </div>
+                      <SystemBadge system={item.system} />
                     </div>
-                    <SystemBadge system={item.system} />
-                  </div>
+                  </Link>
                 </li>
               ))
             )}
@@ -299,7 +341,20 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 ) : (
                   recentWishlist.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.name}</TableCell>
+                      <TableCell>
+                        {item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {item.name}
+                          </a>
+                        ) : (
+                          item.name
+                        )}
+                      </TableCell>
                       <TableCell>
                         <SystemBadge system={item.system} />
                       </TableCell>

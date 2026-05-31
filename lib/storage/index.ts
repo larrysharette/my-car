@@ -3,6 +3,8 @@ import { getStorageDriver } from "./types"
 import type { StorageAdapter } from "./types"
 import { VercelBlobStorageAdapter } from "./vercel-blob"
 
+export { buildStorageKey } from "./keys"
+
 let storage: StorageAdapter | null = null
 
 export function getStorage(): StorageAdapter {
@@ -13,9 +15,4 @@ export function getStorage(): StorageAdapter {
         : new LocalStorageAdapter()
   }
   return storage
-}
-
-export function buildStorageKey(carId: string, folder: string, filename: string) {
-  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_")
-  return `${carId}/${folder}/${Date.now()}-${safeName}`
 }

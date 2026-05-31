@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-const protectedPaths = ["/", "/gas", "/maintenance", "/gallery", "/settings"]
+const protectedPaths = ["/", "/gas", "/maintenance", "/inspections", "/wishlist", "/gallery", "/settings", "/export"]
 const authPaths = ["/signin", "/signup"]
 
 export function proxy(request: NextRequest) {
@@ -17,9 +17,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/signin", request.url))
   }
 
-  // if (isAuthPage && session) {
-  //   return NextResponse.redirect(new URL("/", request.url))
-  // }
+  if (isAuthPage && session) {
+    return NextResponse.redirect(new URL("/", request.url))
+  }
 
   return NextResponse.next()
 }
@@ -29,8 +29,11 @@ export const proxyConfig = {
     "/",
     "/gas/:path*",
     "/maintenance/:path*",
+    "/inspections/:path*",
+    "/wishlist/:path*",
     "/gallery/:path*",
     "/settings/:path*",
+    "/export/:path*",
     "/signin",
     "/signup",
   ],

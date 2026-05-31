@@ -35,6 +35,26 @@ export const maintenancePartFormSchema = z.object({
   url: z.string().optional(),
 })
 
+/** Partial update schema for maintenance log detail saves */
+export const updateMaintenanceLogSchema = z
+  .object({
+    date: z.coerce.date().optional(),
+    system: z.string().min(1).optional(),
+    service: z.string().min(1).optional(),
+    status: z.enum(["planned", "in-progress", "completed"]).nullable().optional(),
+    odometer: z.coerce.number().nullable().optional(),
+    plannedFor: z.coerce.date().nullable().optional(),
+    completedAt: z.coerce.date().nullable().optional(),
+    description: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    cost: z.coerce.number().nullable().optional(),
+    total: z.coerce.number().nullable().optional(),
+    technician: z.string().nullable().optional(),
+    parts: z.string().nullable().optional(),
+    labor: z.string().nullable().optional(),
+  })
+  .strict()
+
 export type CreateMaintenanceValues = z.infer<typeof createMaintenanceFormSchema>
 export type MaintenancePartValues = z.infer<typeof maintenancePartFormSchema>
 

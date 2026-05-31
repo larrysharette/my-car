@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
     unoptimized: process.env.NODE_ENV === "development",
   },
   allowedDevOrigins: ["192.168.0.187"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
 }
 
 export default nextConfig

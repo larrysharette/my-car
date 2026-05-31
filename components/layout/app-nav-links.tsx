@@ -3,11 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  FileArrowDown,
   Camera,
   Gauge,
   GasPump,
   Gear,
+  Heart,
   House,
+  ListChecks,
   SignOut,
   Wrench,
 } from "@phosphor-icons/react"
@@ -21,8 +24,11 @@ export const appNavItems = [
   { href: "/", label: "Dashboard", icon: House },
   { href: "/gas", label: "Gas Log", icon: GasPump },
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
+  { href: "/inspections", label: "Inspections", icon: ListChecks },
+  { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/gallery", label: "Gallery", icon: Camera },
   { href: "/settings", label: "Settings", icon: Gear },
+  { href: "/export", label: "Export", icon: FileArrowDown },
 ] as const
 
 export function AppNavLinks({

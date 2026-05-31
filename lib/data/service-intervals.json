@@ -1,0 +1,50 @@
+{
+  "Engine": {
+    "Oil Change": {
+      "maintenanceIntervalMiles": 5000,
+      "maintenanceIntervalDays": 180,
+      "inspectionIntervalDays": null
+    },
+    "Air Filter": {
+      "maintenanceIntervalMiles": 15000,
+      "maintenanceIntervalDays": 365,
+      "inspectionIntervalDays": 60
+    },
+    "Spark Plugs": {
+      "maintenanceIntervalMiles": 30000,
+      "maintenanceIntervalDays": 730,
+      "inspectionIntervalDays": null
+    },
+    "Coolant Flush": {
+      "maintenanceIntervalMiles": 30000,
+      "maintenanceIntervalDays": 730,
+      "inspectionIntervalDays": null
+    }
+  },
+  "Brakes": {
+    "Pad Replacement": {
+      "maintenanceIntervalMiles": 25000,
+      "maintenanceIntervalDays": 730,
+      "inspectionIntervalDays": 90
+    },
+    "Brake Fluid Flush": {
+      "maintenanceIntervalMiles": 30000,
+      "maintenanceIntervalDays": 730,
+      "inspectionIntervalDays": null
+    }
+  },
+  "Electrical": {
+    "Battery Replacement": {
+      "maintenanceIntervalMiles": null,
+      "maintenanceIntervalDays": 1095,
+      "inspectionIntervalDays": 180
+    }
+  },
+  "General": {
+    "Tire Rotation": {
+      "maintenanceIntervalMiles": 7500,
+      "maintenanceIntervalDays": 180,
+      "inspectionIntervalDays": 30
+    }
+  }
+}

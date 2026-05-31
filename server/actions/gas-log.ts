@@ -1,6 +1,6 @@
 "use server"
 
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { gasLogSchema } from "~/lib/validations/gas-log"
 import {
@@ -8,7 +8,7 @@ import {
   getPreviousGasLogOdometer,
   updateCarOdometerIfHigher,
 } from "~/lib/metrics/gas"
-import { actionError, actionSuccess } from "~/server/actions/utils"
+import { actionError, actionSuccess, actionErrorFromUnknown } from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
 import db from "~/server/db"
 import { gasLog } from "~/server/db/schema"
@@ -120,15 +120,19 @@ export async function updateGasLog(id: string, formData: FormData) {
         gpsLongitude: parsed.data.gpsLongitude?.toString(),
         mpg,
       })
-      .where(eq(gasLog.id, id))
+      .where(and(eq(gasLog.id, id), eq(gasLog.carId, carId)))
       .returning()
+
+    if (!log) {
+      return actionError("Unauthorized")
+    }
 
     await updateCarOdometerIfHigher(carId, parsed.data.odometer)
     revalidatePath("/")
     revalidatePath("/gas")
     return actionSuccess(log)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to update gas log")
+    return actionErrorFromUnknown(e, "Failed to update gas log")
   }
 }
 
@@ -143,12 +147,18 @@ export async function getGasLogs() {
 
 export async function deleteGasLog(id: string) {
   try {
-    await requireCarId()
-    await db.delete(gasLog).where(eq(gasLog.id, id))
+    const carId = await requireCarId()
+    const deleted = await db
+      .delete(gasLog)
+      .where(and(eq(gasLog.id, id), eq(gasLog.carId, carId)))
+      .returning({ id: gasLog.id })
+    if (deleted.length === 0) {
+      return actionError("Unauthorized")
+    }
     revalidatePath("/gas")
     revalidatePath("/")
     return actionSuccess(undefined)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to delete")
+    return actionErrorFromUnknown(e, "Failed to delete")
   }
 }

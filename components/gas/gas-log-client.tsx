@@ -10,6 +10,16 @@ import { toast } from "sonner"
 import { GasFillupDialog } from "~/components/gas/gas-fillup-dialog"
 import { MapPreview } from "~/components/maps/map-preview"
 import { DataTable } from "~/components/ui/data-table"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
 import {
   Dialog,
@@ -26,6 +36,14 @@ import {
 } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"
+import { Textarea } from "~/components/ui/textarea"
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -39,7 +57,7 @@ import {
   gasLogValuesToFormData,
   type GasLogValues,
 } from "~/lib/validations/gas-log"
-import { updateGasLog } from "~/server/actions/gas-log"
+import { updateGasLog, deleteGasLog } from "~/server/actions/gas-log"
 import type { gasLog } from "~/server/db/schema"
 
 type GasLog = typeof gasLog.$inferSelect
@@ -52,6 +70,7 @@ function GasLogDetailForm({
   onClose: () => void
 }) {
   const [pending, startTransition] = useTransition()
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const form = useForm({
     defaultValues: {
@@ -226,13 +245,102 @@ function GasLogDetailForm({
             )
           }}
         />
+        <form.Field
+          name="fuelType"
+          children={(field) => {
+            const invalid = isFieldInvalid(field)
+            return (
+              <Field data-invalid={invalid}>
+                <FieldLabel htmlFor={`gas-detail-${field.name}`}>Fuel type</FieldLabel>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(value) =>
+                    field.handleChange(value as typeof field.state.value)
+                  }
+                >
+                  <SelectTrigger id={`gas-detail-${field.name}`} aria-invalid={invalid}>
+                    <SelectValue placeholder="Regular" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="regular">Regular</SelectItem>
+                    <SelectItem value="mid-grade">Mid-Grade</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="diesel">Diesel</SelectItem>
+                  </SelectContent>
+                </Select>
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </Field>
+            )
+          }}
+        />
+        <form.Field
+          name="notes"
+          children={(field) => {
+            const invalid = isFieldInvalid(field)
+            return (
+              <Field data-invalid={invalid} className="sm:col-span-2">
+                <FieldLabel htmlFor={`gas-detail-${field.name}`}>Notes</FieldLabel>
+                <Textarea
+                  id={`gas-detail-${field.name}`}
+                  rows={2}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  aria-invalid={invalid}
+                />
+                {invalid && <FieldError errors={field.state.meta.errors} />}
+              </Field>
+            )
+          }}
+        />
       </FieldGroup>
       <p className="text-sm text-muted-foreground">
         MPG: {log.mpg ? Number(log.mpg).toFixed(1) : "—"}
       </p>
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Saving..." : "Save changes"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" className="flex-1" disabled={pending}>
+          {pending ? "Saving..." : "Save changes"}
+        </Button>
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={pending}
+          onClick={() => setDeleteOpen(true)}
+        >
+          Delete
+        </Button>
+      </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete fill-up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the fill-up from{" "}
+              {format(new Date(log.date), "MMM d, yyyy")}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                startTransition(async () => {
+                  const result = await deleteGasLog(log.id)
+                  if (result.success) {
+                    toast.success("Fill-up deleted")
+                    onClose()
+                  } else {
+                    toast.error(result.error)
+                  }
+                })
+              }}
+              disabled={pending}
+            >
+              {pending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }

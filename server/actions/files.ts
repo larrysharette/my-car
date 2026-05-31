@@ -1,13 +1,32 @@
 "use server"
 
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { buildStorageKey, getStorage } from "~/lib/storage"
-import { actionError, actionSuccess } from "~/server/actions/utils"
+import {
+  actionError,
+  actionSuccess,
+  actionErrorFromUnknown,
+  assertCarOwnsResource,
+} from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
 import db from "~/server/db"
 import { carFiles, carImages, maintenanceFiles } from "~/server/db/schema"
+
+async function requireOwnedMaintenanceLog(maintenanceLogId: string, carId: string) {
+  const log = await db.query.maintenanceLog.findFirst({
+    where: { id: maintenanceLogId },
+  })
+  assertCarOwnsResource(carId, log?.carId)
+  return log!
+}
+
+async function requireOwnedCarImage(imageId: string, carId: string) {
+  const image = await db.query.carImages.findFirst({ where: { id: imageId } })
+  assertCarOwnsResource(carId, image?.carId)
+  return image!
+}
 
 export async function uploadCarImage(formData: FormData) {
   try {
@@ -45,7 +64,7 @@ export async function uploadCarImage(formData: FormData) {
     revalidatePath("/")
     return actionSuccess(image)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Upload failed")
+    return actionErrorFromUnknown(e, "Upload failed")
   }
 }
 
@@ -75,18 +94,19 @@ export async function uploadCarFile(formData: FormData) {
     revalidatePath("/gallery")
     return actionSuccess(record)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Upload failed")
+    return actionErrorFromUnknown(e, "Upload failed")
   }
 }
 
 export async function uploadMaintenanceFile(formData: FormData) {
   try {
-    await requireCarId()
+    const carId = await requireCarId()
     const maintenanceLogId = formData.get("maintenanceLogId") as string
     const file = formData.get("file") as File | null
     if (!file || !maintenanceLogId) return actionError("Missing file or log id")
 
-    const carId = await requireCarId()
+    await requireOwnedMaintenanceLog(maintenanceLogId, carId)
+
     const buffer = Buffer.from(await file.arrayBuffer())
     const storage = getStorage()
     const key = buildStorageKey(carId, `maintenance/${maintenanceLogId}`, file.name)
@@ -106,20 +126,25 @@ export async function uploadMaintenanceFile(formData: FormData) {
     revalidatePath(`/maintenance/${maintenanceLogId}`)
     return actionSuccess(record)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Upload failed")
+    return actionErrorFromUnknown(e, "Upload failed")
   }
 }
 
 export async function setPrimaryImage(imageId: string) {
   try {
     const carId = await requireCarId()
+    await requireOwnedCarImage(imageId, carId)
+
     await db.update(carImages).set({ isPrimary: false }).where(eq(carImages.carId, carId))
-    await db.update(carImages).set({ isPrimary: true }).where(eq(carImages.id, imageId))
+    await db
+      .update(carImages)
+      .set({ isPrimary: true })
+      .where(and(eq(carImages.id, imageId), eq(carImages.carId, carId)))
     revalidatePath("/gallery")
     revalidatePath("/")
     return actionSuccess(undefined)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to set primary")
+    return actionErrorFromUnknown(e, "Failed to set primary")
   }
 }
 
@@ -128,12 +153,37 @@ export async function updateCarImageMeta(
   data: { imageTitle?: string; imageDescription?: string }
 ) {
   try {
-    await requireCarId()
-    await db.update(carImages).set(data).where(eq(carImages.id, imageId))
+    const carId = await requireCarId()
+    await requireOwnedCarImage(imageId, carId)
+
+    await db
+      .update(carImages)
+      .set(data)
+      .where(and(eq(carImages.id, imageId), eq(carImages.carId, carId)))
     revalidatePath("/gallery")
     return actionSuccess(undefined)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to update")
+    return actionErrorFromUnknown(e, "Failed to update")
+  }
+}
+
+export async function updateCarFileMeta(
+  fileId: string,
+  data: { fileName?: string; fileDescription?: string }
+) {
+  try {
+    const carId = await requireCarId()
+    const file = await db.query.carFiles.findFirst({ where: { id: fileId } })
+    assertCarOwnsResource(carId, file?.carId)
+
+    await db
+      .update(carFiles)
+      .set(data)
+      .where(and(eq(carFiles.id, fileId), eq(carFiles.carId, carId)))
+    revalidatePath("/gallery")
+    return actionSuccess(undefined)
+  } catch (e) {
+    return actionErrorFromUnknown(e, "Failed to update")
   }
 }
 

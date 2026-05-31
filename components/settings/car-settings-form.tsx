@@ -45,6 +45,10 @@ type CarSettingsFormProps = {
   brand: string | null
   model: string | null
   year: number | null
+  trim?: string | null
+  bodyClass?: string | null
+  driveType?: string | null
+  engineDisplacement?: string | null
   initialValues: CarSettingsValues
 }
 
@@ -53,6 +57,10 @@ export function CarSettingsForm({
   brand,
   model,
   year,
+  trim,
+  bodyClass,
+  driveType,
+  engineDisplacement,
   initialValues,
 }: CarSettingsFormProps) {
   const [pending, startTransition] = useTransition()
@@ -107,6 +115,18 @@ export function CarSettingsForm({
                 <FieldDescription>
                   Brand, model, and year were set when you signed up.
                 </FieldDescription>
+              </Field>
+            ) : null}
+            {[trim, bodyClass, driveType, engineDisplacement].some(Boolean) ? (
+              <Field>
+                <FieldLabel>Profile details</FieldLabel>
+                <Input
+                  value={[trim, bodyClass, driveType, engineDisplacement]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  readOnly
+                  disabled
+                />
               </Field>
             ) : null}
           </FieldGroup>

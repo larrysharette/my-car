@@ -5,6 +5,14 @@ import {
   computeMonthlyGasMetrics,
   filterLogsWithinDays,
 } from "~/lib/metrics/dashboard-metrics"
+import {
+  computeCostOfOwnership,
+  computeMonthlyCostSummary,
+} from "~/lib/metrics/cost-insights"
+import {
+  getInspectionDueItems,
+  getMaintenanceDueItems,
+} from "~/lib/metrics/reminders"
 import db from "~/server/db"
 import { cars, gasLog, maintenanceLog, wishlist } from "~/server/db/schema"
 
@@ -51,13 +59,14 @@ export async function calculateMpg(
 }
 
 export async function getDashboardData(carId: string) {
-  const [car, logs, recentMaintenance, recentWishlist, reminders] =
+  const [car, logs, allMaintenance, recentMaintenance, recentWishlist, reminders, trackedSystems] =
     await Promise.all([
       db.query.cars.findFirst({
         where: { id: carId },
         with: { images: true },
       }),
       db.select().from(gasLog).where(eq(gasLog.carId, carId)).orderBy(desc(gasLog.date)),
+      db.select().from(maintenanceLog).where(eq(maintenanceLog.carId, carId)),
       db
         .select()
         .from(maintenanceLog)
@@ -78,6 +87,7 @@ export async function getDashboardData(carId: string) {
         )
         .orderBy(desc(maintenanceLog.plannedFor))
         .limit(20),
+      db.query.carSystems.findMany({ where: { carId } }),
     ])
 
   const now = new Date()
@@ -95,17 +105,29 @@ export async function getDashboardData(carId: string) {
   const primaryImage =
     car?.images.find((img) => img.isPrimary) ?? car?.images[0] ?? null
   const metrics = computeMonthlyGasMetrics(logs)
+  const monthlyCosts = computeMonthlyCostSummary(logs, allMaintenance)
+  const costOfOwnership = computeCostOfOwnership(
+    car?.price != null ? Number(car.price) : null,
+    logs,
+    allMaintenance
+  )
+  const maintenanceDue = getMaintenanceDueItems(trackedSystems, car?.odometer).slice(0, 10)
+  const inspectionsDue = getInspectionDueItems(trackedSystems).slice(0, 10)
   const tankSize = car?.tankSize != null ? Number(car.tankSize) : null
 
   return {
     car,
     primaryImage,
     metrics,
+    monthlyCosts,
+    costOfOwnership,
     tankSize,
     logs: filterLogsWithinDays(logs, CHART_LOOKBACK_DAYS),
     recentMaintenance,
     recentWishlist,
     reminders: filteredReminders.slice(0, 10),
+    maintenanceDue,
+    inspectionsDue,
   }
 }
 

@@ -3,9 +3,18 @@
 import { desc, eq, and, isNull, isNotNull, gte, lte } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { createMaintenanceSchema } from "~/lib/validations/maintenance"
+import {
+  createMaintenanceSchema,
+  updateMaintenanceLogSchema,
+} from "~/lib/validations/maintenance"
 import { isValidSystemServicePair } from "~/lib/data/systems-services"
-import { actionError, actionSuccess } from "~/server/actions/utils"
+import { syncCarSystemFromMaintenance } from "~/server/actions/car-systems"
+import {
+  actionError,
+  actionSuccess,
+  actionErrorFromUnknown,
+  assertCarOwnsResource,
+} from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
 import db from "~/server/db"
 import {
@@ -13,6 +22,12 @@ import {
   maintenanceLog,
   maintenanceParts,
 } from "~/server/db/schema"
+
+async function requireOwnedMaintenanceLog(id: string, carId: string) {
+  const log = await db.query.maintenanceLog.findFirst({ where: { id } })
+  assertCarOwnsResource(carId, log?.carId)
+  return log!
+}
 
 export async function createMaintenanceLog(
   formData: FormData,
@@ -66,28 +81,63 @@ export async function createMaintenanceLog(
     return actionSuccess(log)
   } catch (e) {
     if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e
-    return actionError(e instanceof Error ? e.message : "Failed to create log")
+    return actionErrorFromUnknown(e, "Failed to create log")
   }
 }
 
-export async function updateMaintenanceLog(id: string, data: Record<string, unknown>) {
+export async function updateMaintenanceLog(
+  id: string,
+  data: Record<string, unknown>
+) {
   try {
-    await requireCarId()
+    const carId = await requireCarId()
+    await requireOwnedMaintenanceLog(id, carId)
+
+    const parsed = updateMaintenanceLogSchema.safeParse(data)
+    if (!parsed.success) {
+      return actionError(parsed.error.issues[0]?.message ?? "Invalid input")
+    }
+
+    if (
+      parsed.data.system &&
+      parsed.data.service &&
+      !isValidSystemServicePair(parsed.data.system, parsed.data.service)
+    ) {
+      return actionError("Invalid system/service combination")
+    }
+
+    const updateData = {
+      ...parsed.data,
+      cost:
+        parsed.data.cost != null ? String(parsed.data.cost) : parsed.data.cost,
+      total:
+        parsed.data.total != null ? String(parsed.data.total) : parsed.data.total,
+      updatedAt: new Date(),
+    }
+
     const [log] = await db
       .update(maintenanceLog)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
-      .where(eq(maintenanceLog.id, id))
+      .set(updateData)
+      .where(and(eq(maintenanceLog.id, id), eq(maintenanceLog.carId, carId)))
       .returning()
+
+    if (log?.completedAt) {
+      await syncCarSystemFromMaintenance(
+        carId,
+        log.system,
+        log.service,
+        new Date(log.completedAt),
+        log.odometer
+      )
+    }
 
     revalidatePath(`/maintenance/${id}`)
     revalidatePath("/maintenance")
     revalidatePath("/")
+    revalidatePath("/settings")
     return actionSuccess(log)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to update")
+    return actionErrorFromUnknown(e, "Failed to update")
   }
 }
 
@@ -144,7 +194,9 @@ export async function addMaintenancePart(
   formData: FormData
 ) {
   try {
-    await requireCarId()
+    const carId = await requireCarId()
+    await requireOwnedMaintenanceLog(maintenanceLogId, carId)
+
     const [part] = await db
       .insert(maintenanceParts)
       .values({
@@ -161,28 +213,32 @@ export async function addMaintenancePart(
     revalidatePath(`/maintenance/${maintenanceLogId}`)
     return actionSuccess(part)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to add part")
+    return actionErrorFromUnknown(e, "Failed to add part")
   }
 }
 
 export async function deleteMaintenancePart(id: string, maintenanceLogId: string) {
   try {
-    await requireCarId()
+    const carId = await requireCarId()
+    await requireOwnedMaintenanceLog(maintenanceLogId, carId)
+
     await db.delete(maintenanceParts).where(eq(maintenanceParts.id, id))
     revalidatePath(`/maintenance/${maintenanceLogId}`)
     return actionSuccess(undefined)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to delete part")
+    return actionErrorFromUnknown(e, "Failed to delete part")
   }
 }
 
 export async function deleteMaintenanceFile(id: string, maintenanceLogId: string) {
   try {
-    await requireCarId()
+    const carId = await requireCarId()
+    await requireOwnedMaintenanceLog(maintenanceLogId, carId)
+
     await db.delete(maintenanceFiles).where(eq(maintenanceFiles.id, id))
     revalidatePath(`/maintenance/${maintenanceLogId}`)
     return actionSuccess(undefined)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to delete file")
+    return actionErrorFromUnknown(e, "Failed to delete file")
   }
 }

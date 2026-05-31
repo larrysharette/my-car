@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
-import { ArrowLeft, Trash, UploadSimple } from "@phosphor-icons/react"
+import { ArrowLeft, Plus, Trash, UploadSimple } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { SystemServiceSelect } from "~/components/maintenance/system-service-select"
@@ -12,8 +12,21 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { DatePicker } from "~/components/ui/date-picker"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "~/components/ui/sheet"
+import { useIsMobile } from "~/hooks/use-mobile"
 import {
   Select,
   SelectContent,
@@ -37,7 +50,11 @@ import {
   updateMaintenanceLog,
 } from "~/server/actions/maintenance"
 import { uploadMaintenanceFile } from "~/server/actions/files"
-import type { maintenanceFiles, maintenanceLog, maintenanceParts } from "~/server/db/schema"
+import type {
+  maintenanceFiles,
+  maintenanceLog,
+  maintenanceParts,
+} from "~/server/db/schema"
 
 type MaintenanceLog = typeof maintenanceLog.$inferSelect
 type MaintenancePart = typeof maintenanceParts.$inferSelect
@@ -54,6 +71,243 @@ function isImageType(fileType: string) {
 
 function isVideoType(fileType: string) {
   return fileType.startsWith("video/")
+}
+
+type PartFormValues = {
+  name: string
+  partNumber: string
+  quantity: string
+  price: string
+  description: string
+  url: string
+}
+
+const emptyPartForm: PartFormValues = {
+  name: "",
+  partNumber: "",
+  quantity: "1",
+  price: "",
+  description: "",
+  url: "",
+}
+
+function partFormValuesToFormData(values: PartFormValues) {
+  const fd = new FormData()
+  fd.set("name", values.name)
+  fd.set("partNumber", values.partNumber)
+  fd.set("quantity", values.quantity)
+  if (values.price) fd.set("price", values.price)
+  if (values.description) fd.set("description", values.description)
+  if (values.url) fd.set("url", values.url)
+  return fd
+}
+
+function AddPartForm({
+  values,
+  onChange,
+  onSubmit,
+  onCancel,
+  pending,
+}: {
+  values: PartFormValues
+  onChange: (values: PartFormValues) => void
+  onSubmit: (e: React.FormEvent) => void
+  onCancel: () => void
+  pending: boolean
+}) {
+  function setField<K extends keyof PartFormValues>(
+    key: K,
+    value: PartFormValues[K]
+  ) {
+    onChange({ ...values, [key]: value })
+  }
+
+  return (
+    <form id="add-part-form" onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="part-name">Part name</Label>
+        <Input
+          id="part-name"
+          value={values.name}
+          onChange={(e) => setField("name", e.target.value)}
+          placeholder="Oil filter"
+          required
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="part-number">Part number</Label>
+          <Input
+            id="part-number"
+            value={values.partNumber}
+            onChange={(e) => setField("partNumber", e.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="part-quantity">Quantity</Label>
+          <Input
+            id="part-quantity"
+            type="number"
+            min={1}
+            inputMode="decimal"
+            value={values.quantity}
+            onChange={(e) => setField("quantity", e.target.value)}
+            required
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="part-price">Price ($)</Label>
+        <Input
+          id="part-price"
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          value={values.price}
+          onChange={(e) => setField("price", e.target.value)}
+          placeholder="Optional"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="part-description">Description</Label>
+        <Input
+          id="part-description"
+          value={values.description}
+          onChange={(e) => setField("description", e.target.value)}
+          placeholder="Optional"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="part-url">Product URL</Label>
+        <Input
+          id="part-url"
+          type="url"
+          value={values.url}
+          onChange={(e) => setField("url", e.target.value)}
+          placeholder="https://"
+        />
+      </div>
+      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Adding…" : "Add part"}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function AddPartDialog({
+  open,
+  onOpenChange,
+  pending,
+  onAdd,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  pending: boolean
+  onAdd: (formData: FormData, onSuccess: () => void) => void
+}) {
+  const isMobile = useIsMobile()
+  const [values, setValues] = useState(emptyPartForm)
+
+  useEffect(() => {
+    if (open) setValues(emptyPartForm)
+  }, [open])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    onAdd(partFormValuesToFormData(values), () => {
+      setValues(emptyPartForm)
+      onOpenChange(false)
+    })
+  }
+
+  const form = (
+    <AddPartForm
+      values={values}
+      onChange={setValues}
+      onSubmit={handleSubmit}
+      onCancel={() => onOpenChange(false)}
+      pending={pending}
+    />
+  )
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[92dvh] overflow-y-auto rounded-t-xl px-4 pt-4 pb-6"
+        >
+          <SheetHeader className="px-0 pb-4 text-left">
+            <SheetTitle>Add part</SheetTitle>
+          </SheetHeader>
+          {form}
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add part</DialogTitle>
+        </DialogHeader>
+        {form}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function MaintenancePartRow({
+  part,
+  pending,
+  onDelete,
+}: {
+  part: MaintenancePart
+  pending: boolean
+  onDelete: () => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-medium">{part.name}</p>
+        <p className="text-xs text-muted-foreground">
+          {part.partNumber ? `#${part.partNumber} · ` : ""}
+          Qty {part.quantity}
+          {part.price != null ? ` · $${Number(part.price).toFixed(2)}` : ""}
+        </p>
+        {part.description ? (
+          <p className="text-xs text-muted-foreground">{part.description}</p>
+        ) : null}
+        {part.url ? (
+          <a
+            href={part.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block truncate text-xs text-primary hover:underline"
+          >
+            View product
+          </a>
+        ) : null}
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="shrink-0"
+        disabled={pending}
+        onClick={onDelete}
+      >
+        <Trash className="size-4" />
+      </Button>
+    </div>
+  )
 }
 
 function useDebouncedSave(
@@ -73,7 +327,11 @@ function useDebouncedSave(
   )
 }
 
-export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) {
+export function MaintenanceDetailClient({
+  log,
+}: {
+  log: MaintenanceLogDetail
+}) {
   const [system, setSystem] = useState(log.system)
   const [service, setService] = useState(log.service)
   const [status, setStatus] = useState(log.status ?? "planned")
@@ -84,7 +342,10 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
   const [completedAt, setCompletedAt] = useState<Date | undefined>(() =>
     log.completedAt ? new Date(log.completedAt) : undefined
   )
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  )
+  const [addPartOpen, setAddPartOpen] = useState(false)
   const [partPending, startPartTransition] = useTransition()
   const [filePending, startFileTransition] = useTransition()
 
@@ -125,14 +386,12 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
     debouncedSave({ status: next })
   }
 
-  function handleAddPart(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const fd = new FormData(e.currentTarget)
+  function handleAddPart(formData: FormData, onSuccess: () => void) {
     startPartTransition(async () => {
-      const result = await addMaintenancePart(log.id, fd)
+      const result = await addMaintenancePart(log.id, formData)
       if (result.success) {
         toast.success("Part added")
-        e.currentTarget.reset()
+        onSuccess()
       } else {
         toast.error(result.error)
       }
@@ -172,8 +431,12 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
     })
   }
 
-  const mediaFiles = log.files.filter((f) => isImageType(f.fileType) || isVideoType(f.fileType))
-  const otherFiles = log.files.filter((f) => !isImageType(f.fileType) && !isVideoType(f.fileType))
+  const mediaFiles = log.files.filter(
+    (f) => isImageType(f.fileType) || isVideoType(f.fileType)
+  )
+  const otherFiles = log.files.filter(
+    (f) => !isImageType(f.fileType) && !isVideoType(f.fileType)
+  )
 
   return (
     <div className="space-y-6">
@@ -195,7 +458,11 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
           </div>
         </div>
         <span className="text-xs text-muted-foreground">
-          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
+          {saveStatus === "saving"
+            ? "Saving…"
+            : saveStatus === "saved"
+              ? "Saved"
+              : ""}
         </span>
       </div>
 
@@ -244,7 +511,10 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
                 className="font-mono"
                 defaultValue={log.odometer ?? ""}
                 onChange={(e) =>
-                  fieldChange("odometer", e.target.value ? Number(e.target.value) : null)
+                  fieldChange(
+                    "odometer",
+                    e.target.value ? Number(e.target.value) : null
+                  )
                 }
               />
             </div>
@@ -285,7 +555,9 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
               <Input
                 id="technician"
                 defaultValue={log.technician ?? ""}
-                onChange={(e) => fieldChange("technician", e.target.value || null)}
+                onChange={(e) =>
+                  fieldChange("technician", e.target.value || null)
+                }
               />
             </div>
           </div>
@@ -295,7 +567,9 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
               id="description"
               rows={3}
               defaultValue={log.description ?? ""}
-              onChange={(e) => fieldChange("description", e.target.value || null)}
+              onChange={(e) =>
+                fieldChange("description", e.target.value || null)
+              }
             />
           </div>
           <div className="space-y-2">
@@ -311,63 +585,83 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle>Parts</CardTitle>
+          <Button type="button" size="sm" onClick={() => setAddPartOpen(true)}>
+            <Plus className="size-4" />
+            Add part
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Part #</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {log.maintenanceParts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No parts yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  log.maintenanceParts.map((part) => (
-                    <TableRow key={part.id}>
-                      <TableCell>{part.name}</TableCell>
-                      <TableCell className="font-mono text-xs">{part.partNumber ?? "—"}</TableCell>
-                      <TableCell>{part.quantity}</TableCell>
-                      <TableCell>
-                        {part.price != null ? `$${Number(part.price).toFixed(2)}` : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={partPending}
-                          onClick={() => handleDeletePart(part.id)}
-                        >
-                          <Trash className="size-4" />
-                        </Button>
-                      </TableCell>
+          {log.maintenanceParts.length === 0 ? (
+            <p className="rounded-lg border px-4 py-8 text-center text-sm text-muted-foreground">
+              No parts yet
+            </p>
+          ) : (
+            <>
+              <ul className="space-y-2 md:hidden">
+                {log.maintenanceParts.map((part) => (
+                  <li key={part.id}>
+                    <MaintenancePartRow
+                      part={part}
+                      pending={partPending}
+                      onDelete={() => handleDeletePart(part.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+
+              <div className="hidden overflow-x-auto rounded-md border md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Part #</TableHead>
+                      <TableHead>Qty</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead className="w-12" />
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <form onSubmit={handleAddPart} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Input name="name" placeholder="Part name" required />
-            <Input name="partNumber" placeholder="Part number" />
-            <Input name="quantity" type="number" defaultValue={1} min={1} required />
-            <Input name="price" type="number" step="0.01" placeholder="Price ($)" />
-            <Button type="submit" disabled={partPending}>
-              Add part
-            </Button>
-          </form>
+                  </TableHeader>
+                  <TableBody>
+                    {log.maintenanceParts.map((part) => (
+                      <TableRow key={part.id}>
+                        <TableCell className="font-medium">
+                          {part.name}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {part.partNumber ?? "—"}
+                        </TableCell>
+                        <TableCell>{part.quantity}</TableCell>
+                        <TableCell>
+                          {part.price != null
+                            ? `$${Number(part.price).toFixed(2)}`
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={partPending}
+                            onClick={() => handleDeletePart(part.id)}
+                          >
+                            <Trash className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+
+          <AddPartDialog
+            open={addPartOpen}
+            onOpenChange={setAddPartOpen}
+            pending={partPending}
+            onAdd={handleAddPart}
+          />
         </CardContent>
       </Card>
 
@@ -405,12 +699,23 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
           {mediaFiles.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {mediaFiles.map((file) => (
-                <div key={file.id} className="group relative overflow-hidden rounded-lg border">
+                <div
+                  key={file.id}
+                  className="group relative overflow-hidden rounded-lg border"
+                >
                   {isVideoType(file.fileType) ? (
-                    <video src={file.fileUrl} controls className="aspect-video w-full object-cover" />
+                    <video
+                      src={file.fileUrl}
+                      controls
+                      className="aspect-video w-full object-cover"
+                    />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={file.fileUrl} alt={file.fileName} className="aspect-video w-full object-cover" />
+                    <img
+                      src={file.fileUrl}
+                      alt={file.fileName}
+                      className="aspect-video w-full object-cover"
+                    />
                   )}
                   <div className="flex items-center justify-between gap-2 p-2">
                     <p className="truncate text-xs">{file.fileName}</p>
@@ -428,12 +733,14 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No images or videos yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No images or videos yet.
+            </p>
           )}
 
           {otherFiles.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Documents
               </p>
               <ul className="space-y-2">
@@ -442,11 +749,18 @@ export function MaintenanceDetailClient({ log }: { log: MaintenanceLogDetail }) 
                     key={file.id}
                     className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
                   >
-                    <a href={file.fileUrl} target="_blank" rel="noreferrer" className="truncate text-sm hover:underline">
+                    <a
+                      href={file.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-sm hover:underline"
+                    >
                       {file.fileName}
                     </a>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{file.fileType.split("/").pop()}</Badge>
+                      <Badge variant="outline">
+                        {file.fileType.split("/").pop()}
+                      </Badge>
                       <Button
                         type="button"
                         variant="ghost"

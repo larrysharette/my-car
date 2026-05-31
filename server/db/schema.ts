@@ -23,6 +23,10 @@ export const cars = createTable("cars", {
   odometer: integer("odometer"),
   fuel: varchar("fuel", { length: 256 }),
   transmission: varchar("transmission", { length: 256 }),
+  trim: varchar("trim", { length: 256 }),
+  bodyClass: varchar("body_class", { length: 256 }),
+  driveType: varchar("drive_type", { length: 256 }),
+  engineDisplacement: varchar("engine_displacement", { length: 256 }),
   price: decimal("price", { precision: 10, scale: 2 }),
   tankSize: decimal("tank_size", { precision: 10, scale: 2 }),
   hash: varchar("hash", { length: 256 }),
@@ -214,6 +218,85 @@ export const wishlist = createTable(
       columns: [table.carId],
       foreignColumns: [cars.id],
       name: "fk_wishlist_cars",
+    }),
+  ]
+)
+
+export const carSystems = createTable(
+  "car_systems",
+  {
+    id,
+    carId: nanoid("car_id").notNull(),
+    system: varchar("system", { length: 256 }).notNull(),
+    service: varchar("service", { length: 256 }).notNull(),
+    maintenanceIntervalMiles: integer("maintenance_interval_miles"),
+    maintenanceIntervalDays: integer("maintenance_interval_days"),
+    inspectionIntervalDays: integer("inspection_interval_days"),
+    lastReplacedAt: timestamp("last_replaced_at"),
+    lastReplacedOdometer: integer("last_replaced_odometer"),
+    lastInspectedAt: timestamp("last_inspected_at"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.carId],
+      foreignColumns: [cars.id],
+      name: "fk_car_systems_cars",
+    }),
+  ]
+)
+
+export const inspectionLog = createTable(
+  "inspection_log",
+  {
+    id,
+    carId: nanoid("car_id").notNull(),
+    carSystemId: nanoid("car_system_id"),
+    system: varchar("system", { length: 256 }).notNull(),
+    service: varchar("service", { length: 256 }).notNull(),
+    inspectedAt: timestamp("inspected_at").notNull(),
+    result: varchar("result", { length: 32 }).notNull(),
+    notes: text("notes"),
+    odometer: integer("odometer"),
+    maintenanceLogId: nanoid("maintenance_log_id"),
+    createdAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.carId],
+      foreignColumns: [cars.id],
+      name: "fk_inspection_log_cars",
+    }),
+    foreignKey({
+      columns: [table.carSystemId],
+      foreignColumns: [carSystems.id],
+      name: "fk_inspection_log_car_systems",
+    }),
+    foreignKey({
+      columns: [table.maintenanceLogId],
+      foreignColumns: [maintenanceLog.id],
+      name: "fk_inspection_log_maintenance_log",
+    }),
+  ]
+)
+
+export const inspectionFiles = createTable(
+  "inspection_files",
+  {
+    id,
+    inspectionLogId: nanoid("inspection_log_id").notNull(),
+    fileType: varchar("file_type", { length: 256 }).notNull(),
+    fileName: varchar("file_name", { length: 256 }).notNull(),
+    fileSize: integer("file_size"),
+    fileUrl: varchar("file_url", { length: 512 }).notNull(),
+    createdAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.inspectionLogId],
+      foreignColumns: [inspectionLog.id],
+      name: "fk_inspection_files_inspection_log",
     }),
   ]
 )

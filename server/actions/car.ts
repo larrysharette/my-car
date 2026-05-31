@@ -23,6 +23,10 @@ export async function getCarSettings() {
     transmission: car.transmission,
     price: car.price,
     tankSize: car.tankSize,
+    trim: car.trim,
+    bodyClass: car.bodyClass,
+    driveType: car.driveType,
+    engineDisplacement: car.engineDisplacement,
   }
 }
 

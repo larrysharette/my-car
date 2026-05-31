@@ -1,12 +1,23 @@
 "use server"
 
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { wishlistSchema } from "~/lib/validations/wishlist"
-import { actionError, actionSuccess } from "~/server/actions/utils"
+import {
+  actionError,
+  actionSuccess,
+  actionErrorFromUnknown,
+  assertCarOwnsResource,
+} from "~/server/actions/utils"
 import { requireCarId } from "~/server/auth/get-car"
 import db from "~/server/db"
 import { wishlist } from "~/server/db/schema"
+
+async function getOwnedWishlistItem(id: string, carId: string) {
+  const item = await db.query.wishlist.findFirst({ where: { id } })
+  assertCarOwnsResource(carId, item?.carId)
+  return item!
+}
 
 export async function createWishlistItem(formData: FormData) {
   try {
@@ -30,15 +41,18 @@ export async function createWishlistItem(formData: FormData) {
       .returning()
 
     revalidatePath("/")
+    revalidatePath("/wishlist")
     return actionSuccess(item)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to create item")
+    return actionErrorFromUnknown(e, "Failed to create item")
   }
 }
 
 export async function updateWishlistItem(id: string, formData: FormData) {
   try {
-    await requireCarId()
+    const carId = await requireCarId()
+    await getOwnedWishlistItem(id, carId)
+
     const parsed = wishlistSchema.safeParse({
       name: formData.get("name"),
       description: formData.get("description") || undefined,
@@ -55,24 +69,32 @@ export async function updateWishlistItem(id: string, formData: FormData) {
     const [item] = await db
       .update(wishlist)
       .set({ ...parsed.data, price: parsed.data.price.toString() })
-      .where(eq(wishlist.id, id))
+      .where(and(eq(wishlist.id, id), eq(wishlist.carId, carId)))
       .returning()
 
     revalidatePath("/")
+    revalidatePath("/wishlist")
     return actionSuccess(item)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to update item")
+    return actionErrorFromUnknown(e, "Failed to update item")
   }
 }
 
 export async function deleteWishlistItem(id: string) {
   try {
-    await requireCarId()
-    await db.delete(wishlist).where(eq(wishlist.id, id))
+    const carId = await requireCarId()
+    const deleted = await db
+      .delete(wishlist)
+      .where(and(eq(wishlist.id, id), eq(wishlist.carId, carId)))
+      .returning({ id: wishlist.id })
+    if (deleted.length === 0) {
+      return actionError("Unauthorized")
+    }
     revalidatePath("/")
+    revalidatePath("/wishlist")
     return actionSuccess(undefined)
   } catch (e) {
-    return actionError(e instanceof Error ? e.message : "Failed to delete item")
+    return actionErrorFromUnknown(e, "Failed to delete item")
   }
 }
 

@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useActionState } from "react"
+import { useRouter } from "next/navigation"
+import { useActionState, useEffect } from "react"
 import { formOptions, useForm } from "@tanstack/react-form"
 
 import { signInAction } from "~/server/actions/auth"
@@ -28,7 +29,15 @@ const signInFormOpts = formOptions({
 })
 
 export function SignInForm() {
+  const router = useRouter()
   const [state, formAction, pending] = useActionState(signInAction, null)
+
+  useEffect(() => {
+    if (state?.success) {
+      router.replace("/")
+      router.refresh()
+    }
+  }, [state, router])
 
   const form = useForm({
     ...signInFormOpts,

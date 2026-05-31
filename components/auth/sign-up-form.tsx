@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useActionState, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useActionState, useEffect, useState } from "react"
 import { useForm, useStore } from "@tanstack/react-form"
 
 import { VehicleComboboxField } from "~/components/auth/vehicle-combobox-field"
@@ -41,8 +42,16 @@ const yearOptions = getVehicleYearOptions()
 type Step = 1 | 2 | 3
 
 export function SignUpForm() {
+  const router = useRouter()
   const [state, formAction, pending] = useActionState(signUpAction, null)
   const [step, setStep] = useState<Step>(1)
+
+  useEffect(() => {
+    if (state?.success) {
+      router.replace("/")
+      router.refresh()
+    }
+  }, [state, router])
   const [trackedServices, setTrackedServices] = useState<TrackedServiceSelection[]>([])
   const { makes, loading: makesLoading, error: makesError } = useVehicleMakes()
 

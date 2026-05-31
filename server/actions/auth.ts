@@ -11,8 +11,10 @@ import { createSession, destroySession, getSessionCarId } from "~/server/auth/se
 import db from "~/server/db"
 import { cars } from "~/server/db/schema"
 
+export type AuthActionState = { error?: string; success?: boolean } | null
+
 export async function signInAction(
-  _prev: { error?: string } | null,
+  _prev: AuthActionState,
   formData: FormData
 ) {
   const parsed = signInSchema.safeParse({
@@ -38,11 +40,11 @@ export async function signInAction(
   }
 
   await createSession(car.id)
-  redirect("/")
+  return { success: true }
 }
 
 export async function signUpAction(
-  _prev: { error?: string } | null,
+  _prev: AuthActionState,
   formData: FormData
 ) {
   const parsed = signUpSchema.safeParse({
@@ -100,7 +102,7 @@ export async function signUpAction(
 
   await insertCarSystemsForSignup(car.id, trackedServices)
   await createSession(car.id)
-  redirect("/")
+  return { success: true }
 }
 
 export async function signIn(formData: FormData) {

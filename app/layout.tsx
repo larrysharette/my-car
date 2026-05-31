@@ -2,6 +2,7 @@ import { Geist_Mono, Oxanium } from "next/font/google"
 import type { Metadata, Viewport } from "next"
 
 import "./globals.css"
+import { PwaInstallPrompt } from "~/components/pwa/pwa-install-prompt"
 import { SerwistProviderWrapper } from "~/components/pwa/serwist-provider"
 import { ThemeProvider } from "~/components/theme-provider"
 import { Toaster } from "~/components/ui/sonner"
@@ -55,6 +56,7 @@ export default function RootLayout({
         <SerwistProviderWrapper>
           <ThemeProvider>
             {children}
+            <PwaInstallPrompt />
             <Toaster />
           </ThemeProvider>
         </SerwistProviderWrapper>

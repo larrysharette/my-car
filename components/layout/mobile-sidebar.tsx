@@ -14,7 +14,11 @@ export function MobileSidebar({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-72 max-w-[85vw] p-0" showCloseButton>
+      <SheetContent
+        side="left"
+        className="w-72 max-w-[85vw] p-0 [&>[data-slot=sheet-close]]:top-[max(1rem,env(safe-area-inset-top))] [&>[data-slot=sheet-close]]:right-[max(1rem,env(safe-area-inset-right))]"
+        showCloseButton
+      >
         <SheetTitle className="sr-only">Navigation menu</SheetTitle>
         <AppNavLinks carName={carName} onNavigate={() => onOpenChange(false)} />
       </SheetContent>

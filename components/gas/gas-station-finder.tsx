@@ -41,9 +41,12 @@ import type {
 import type { GasLogValues } from "~/lib/validations/gas-log"
 import { cn } from "~/lib/utils"
 
-const GasStationMap = dynamic(() => import("~/components/gas/gas-station-map"), {
-  ssr: false,
-})
+const GasStationMap = dynamic(
+  () => import("~/components/gas/gas-station-map"),
+  {
+    ssr: false,
+  }
+)
 
 const CARD_PAGE_SIZE = 5
 
@@ -240,9 +243,9 @@ export function GasStationFinder() {
       ) : null}
 
       {location.status === "ready" ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
           <div className="overflow-hidden rounded-lg border border-border bg-[#06060c]">
-            <div className="h-[220px] sm:h-[300px] md:h-[360px] xl:h-[min(520px,70vh)]">
+            <div className="h-full min-h-[220px] sm:min-h-[300px] md:min-h-[360px] xl:min-h-[min(520px,70vh)]">
               {isInitialLoad ? (
                 <div className="flex h-full items-center justify-center bg-muted text-sm text-muted-foreground">
                   <SpinnerGap className="mr-2 size-4 animate-spin" />
@@ -358,7 +361,7 @@ function StationCard({
   return (
     <Card
       className={cn(
-        "transition-colors",
+        "py-0 transition-colors",
         focused && "border-primary bg-primary/5 ring-2 ring-primary/30"
       )}
     >
@@ -366,7 +369,10 @@ function StationCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <GasPump className="size-4 shrink-0 text-primary" weight="duotone" />
+              <GasPump
+                className="size-4 shrink-0 text-primary"
+                weight="duotone"
+              />
               <p className="truncate font-medium">{station.name}</p>
             </div>
             {station.address ? (
@@ -397,7 +403,12 @@ function StationCard({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onShowOnMap}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onShowOnMap}
+          >
             <MapTrifold className="size-4" />
             Show on map
           </Button>

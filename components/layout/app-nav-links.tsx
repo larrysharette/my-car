@@ -49,7 +49,7 @@ export function AppNavLinks({
   return (
     <div
       className={cn(
-        "flex h-full flex-col bg-sidebar text-sidebar-foreground",
+        "flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground safe-top safe-left safe-bottom",
         className
       )}
     >

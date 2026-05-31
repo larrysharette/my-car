@@ -18,7 +18,7 @@ export function AppHeader({ carName }: { carName?: string | null }) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md md:hidden">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md lg:hidden">
         <div
           className="flex items-center gap-3 px-4 py-3"
           style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))" }}

@@ -10,6 +10,12 @@ import {
   wasInstallPromptDismissed,
   type BeforeInstallPromptEvent,
 } from "~/lib/pwa/before-install-prompt"
+import {
+  clearDeferredInstallPrompt,
+  getDeferredInstallPrompt,
+  PWA_INSTALL_READY_EVENT,
+  setDeferredInstallPrompt,
+} from "~/lib/pwa/install-prompt-store"
 import { isStandaloneDisplayMode } from "~/lib/push/client"
 
 export function PwaInstallPrompt() {
@@ -17,22 +23,40 @@ export function PwaInstallPrompt() {
     useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
 
+  const showPrompt = useCallback((event: BeforeInstallPromptEvent) => {
+    setDeferredPrompt(event)
+    setVisible(true)
+  }, [])
+
   useEffect(() => {
     if (isStandaloneDisplayMode() || wasInstallPromptDismissed()) return
+
+    const existing = getDeferredInstallPrompt()
+    if (existing) showPrompt(existing)
 
     const onBeforeInstall = (event: Event) => {
       if (!isBeforeInstallPromptEvent(event)) return
       event.preventDefault()
-      setDeferredPrompt(event)
-      setVisible(true)
+      setDeferredInstallPrompt(event)
+      showPrompt(event)
+    }
+
+    const onReady = () => {
+      const prompt = getDeferredInstallPrompt()
+      if (prompt) showPrompt(prompt)
     }
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall)
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall)
-  }, [])
+    window.addEventListener(PWA_INSTALL_READY_EVENT, onReady)
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall)
+      window.removeEventListener(PWA_INSTALL_READY_EVENT, onReady)
+    }
+  }, [showPrompt])
 
   const dismiss = useCallback(() => {
     dismissInstallPrompt()
+    clearDeferredInstallPrompt()
     setVisible(false)
     setDeferredPrompt(null)
   }, [])

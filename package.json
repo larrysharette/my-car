@@ -14,7 +14,8 @@
     "db:studio": "drizzle-kit studio",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pwa:icons": "tsx scripts/generate-pwa-icons.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -2,6 +2,7 @@ import { Geist_Mono, Oxanium } from "next/font/google"
 import type { Metadata, Viewport } from "next"
 
 import "./globals.css"
+import { PwaBootstrapScript } from "~/components/pwa/pwa-bootstrap-script"
 import { PwaInstallPrompt } from "~/components/pwa/pwa-install-prompt"
 import { SerwistProviderWrapper } from "~/components/pwa/serwist-provider"
 import { ThemeProvider } from "~/components/theme-provider"
@@ -11,6 +12,7 @@ import { cn } from "~/lib/utils"
 const APP_NAME = "My Car"
 
 export const metadata: Metadata = {
+  manifest: "/manifest.webmanifest",
   applicationName: APP_NAME,
   title: {
     default: APP_NAME,
@@ -53,6 +55,7 @@ export default function RootLayout({
       className={cn("dark antialiased", fontMono.variable, "font-sans", oxanium.variable)}
     >
       <body>
+        <PwaBootstrapScript />
         <SerwistProviderWrapper>
           <ThemeProvider>
             {children}

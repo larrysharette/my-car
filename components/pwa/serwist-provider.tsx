@@ -8,6 +8,12 @@ export function SerwistProviderWrapper({
   children: React.ReactNode
 }) {
   return (
-    <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+    <SerwistProvider
+      swUrl="/serwist/sw.js"
+      register={false}
+      options={{ scope: "/" }}
+    >
+      {children}
+    </SerwistProvider>
   )
 }

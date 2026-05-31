@@ -13,6 +13,9 @@ const APP_NAME = "My Car"
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
+  icons: {
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
   applicationName: APP_NAME,
   title: {
     default: APP_NAME,

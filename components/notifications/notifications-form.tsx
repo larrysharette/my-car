@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "~/components/ui/select"
 import { Switch } from "~/components/ui/switch"
+import { isIosDevice } from "~/lib/pwa/platform"
 import {
   isPushSupported,
   isStandaloneDisplayMode,
@@ -164,9 +165,7 @@ export function NotificationsForm({
     savePreferences({ ...prefs, pushEnabled: false })
   }
 
-  const isIos =
-    typeof navigator !== "undefined" &&
-    /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const isIos = isIosDevice()
 
   return (
     <div className="space-y-5">

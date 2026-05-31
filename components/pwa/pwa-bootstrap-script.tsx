@@ -10,11 +10,22 @@ const bootstrapScript = `
     window.dispatchEvent(new Event("pwa-install-ready"));
   });
 
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("/serwist/sw.js", { scope: "/", type: "module" })
-      .catch(function () {});
+  if (!("serviceWorker" in navigator)) return;
+
+  var swUrl = "/serwist/sw.js";
+  var scope = "/";
+
+  function onRegistered() {
+    window.dispatchEvent(new Event("pwa-sw-registered"));
   }
+
+  navigator.serviceWorker
+    .register(swUrl, { scope: scope, type: "module" })
+    .then(onRegistered)
+    .catch(function () {
+      return navigator.serviceWorker.register(swUrl, { scope: scope }).then(onRegistered);
+    })
+    .catch(function () {});
 })();
 `
 

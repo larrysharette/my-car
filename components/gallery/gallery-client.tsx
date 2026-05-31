@@ -92,7 +92,8 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
     }))
     return [...imageItems, ...fileItems].sort(
       (a, b) =>
-        new Date(b.raw.createdAt).getTime() - new Date(a.raw.createdAt).getTime()
+        new Date(b.raw.createdAt).getTime() -
+        new Date(a.raw.createdAt).getTime()
     )
   }, [gallery])
 
@@ -116,9 +117,13 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const result =
-        uploadKind === "image" ? await uploadCarImage(fd) : await uploadCarFile(fd)
+        uploadKind === "image"
+          ? await uploadCarImage(fd)
+          : await uploadCarFile(fd)
       if (result.success) {
-        toast.success(uploadKind === "image" ? "Image uploaded" : "File uploaded")
+        toast.success(
+          uploadKind === "image" ? "Image uploaded" : "File uploaded"
+        )
         setUploadOpen(false)
         e.currentTarget.reset()
       } else {
@@ -166,9 +171,12 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
   return (
     <>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <div className="space-y-1 w-full sm:w-auto">
+        <div className="w-full space-y-1 sm:w-auto">
           <Label>Filter</Label>
-          <Select value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
+          <Select
+            value={filter}
+            onValueChange={(v) => setFilter(v as FilterType)}
+          >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue />
             </SelectTrigger>
@@ -215,17 +223,25 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
             <Card key={`${item.kind}-${item.id}`} className="overflow-hidden">
               <div className="relative aspect-video bg-muted">
                 {isVideoType(item.fileType) ? (
-                  <video src={item.url} controls className="size-full object-cover" />
+                  <video
+                    src={item.url}
+                    controls
+                    className="size-full object-cover"
+                  />
                 ) : isImageType(item.fileType) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.url} alt={item.title} className="size-full object-cover" />
+                  <img
+                    src={item.url}
+                    alt={item.title}
+                    className="size-full object-cover"
+                  />
                 ) : (
                   <div className="flex size-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
                     {item.title}
                   </div>
                 )}
                 {item.isPrimary ? (
-                  <Badge className="absolute left-2 top-2">Primary</Badge>
+                  <Badge className="absolute top-2 left-2">Primary</Badge>
                 ) : null}
               </div>
               <CardHeader className="pb-2">
@@ -238,7 +254,9 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                   </p>
                 ) : null}
                 {item.description ? (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {item.description}
+                  </p>
                 ) : null}
                 <div className="flex flex-wrap gap-2">
                   {item.kind === "image" ? (
@@ -250,7 +268,12 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                         disabled={pending || item.isPrimary}
                         onClick={() => handleSetPrimary(item.id)}
                       >
-                        <Star className={cn("mr-1 size-3.5", item.isPrimary && "fill-current")} />
+                        <Star
+                          className={cn(
+                            "mr-1 size-3.5",
+                            item.isPrimary && "fill-current"
+                          )}
+                        />
                         Set primary
                       </Button>
                       <Button
@@ -289,7 +312,9 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{uploadKind === "image" ? "Upload image" : "Upload file"}</DialogTitle>
+            <DialogTitle>
+              {uploadKind === "image" ? "Upload image" : "Upload file"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="space-y-2">
@@ -298,7 +323,6 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                 id="file"
                 name="file"
                 type="file"
-                capture={uploadKind === "image" ? "environment" : undefined}
                 accept={uploadKind === "image" ? "image/*,video/*" : undefined}
                 required
               />
@@ -314,7 +338,12 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                   <Textarea id="description" name="description" rows={2} />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="isPrimary" name="isPrimary" value="true" />
+                  <input
+                    type="checkbox"
+                    id="isPrimary"
+                    name="isPrimary"
+                    value="true"
+                  />
                   <Label htmlFor="isPrimary">Set as primary banner image</Label>
                 </div>
               </>
@@ -325,7 +354,11 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
               </div>
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setUploadOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setUploadOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={pending}>
@@ -361,7 +394,11 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                 />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditImage(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditImage(null)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={pending}>
@@ -403,7 +440,11 @@ export function GalleryClient({ gallery }: { gallery: GalleryData }) {
                 </p>
               ) : null}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditFile(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditFile(null)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={pending}>

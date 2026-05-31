@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  Bell,
   FileArrowDown,
   Camera,
   Gauge,
@@ -30,6 +31,7 @@ export const appNavItems = [
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/gallery", label: "Gallery", icon: Camera },
   { href: "/settings", label: "Settings", icon: Gear },
+  { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/export", label: "Export", icon: FileArrowDown },
 ] as const
 

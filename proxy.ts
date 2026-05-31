@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-const protectedPaths = ["/", "/gas", "/maintenance", "/inspections", "/wishlist", "/gallery", "/settings", "/export"]
+const protectedPaths = ["/", "/gas", "/maintenance", "/inspections", "/wishlist", "/gallery", "/settings", "/notifications", "/export"]
 const authPaths = ["/signin", "/signup"]
 
 export function proxy(request: NextRequest) {
@@ -33,6 +33,7 @@ export const proxyConfig = {
     "/wishlist/:path*",
     "/gallery/:path*",
     "/settings/:path*",
+    "/notifications/:path*",
     "/export/:path*",
     "/signin",
     "/signup",

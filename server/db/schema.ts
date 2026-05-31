@@ -300,3 +300,70 @@ export const inspectionFiles = createTable(
     }),
   ]
 )
+
+export const pushSubscriptions = createTable(
+  "push_subscriptions",
+  {
+    id,
+    carId: nanoid("car_id").notNull(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.carId],
+      foreignColumns: [cars.id],
+      name: "fk_push_subscriptions_cars",
+    }),
+  ]
+)
+
+export const notificationPreferences = createTable(
+  "notification_preferences",
+  {
+    id,
+    carId: nanoid("car_id").notNull().unique(),
+    pushEnabled: boolean("push_enabled").notNull().default(false),
+    maintenanceOverdue: boolean("maintenance_overdue").notNull().default(true),
+    inspectionOverdue: boolean("inspection_overdue").notNull().default(true),
+    inspectionUpcoming: boolean("inspection_upcoming").notNull().default(true),
+    upcomingLeadDays: integer("upcoming_lead_days").notNull().default(7),
+    frequency: varchar("frequency", { length: 32 }).notNull().default("daily"),
+    repeatOverdueDays: integer("repeat_overdue_days").notNull().default(7),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.carId],
+      foreignColumns: [cars.id],
+      name: "fk_notification_preferences_cars",
+    }),
+  ]
+)
+
+export const notificationLog = createTable(
+  "notification_log",
+  {
+    id,
+    carId: nanoid("car_id").notNull(),
+    systemId: nanoid("system_id").notNull(),
+    reminderType: varchar("reminder_type", { length: 64 }).notNull(),
+    sentAt: timestamp("sent_at").notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.carId],
+      foreignColumns: [cars.id],
+      name: "fk_notification_log_cars",
+    }),
+    foreignKey({
+      columns: [table.systemId],
+      foreignColumns: [carSystems.id],
+      name: "fk_notification_log_car_systems",
+    }),
+  ]
+)
